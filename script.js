@@ -5,8 +5,18 @@ const rangoEnemigo = 2;
 
 // Estado
 let turno = "jugador"; // 'jugador' | 'enemigo' | 'fin'
-let jugador = { fila: 4, col: 2, vivo: true };
-let enemigo = { fila: 4, col: 5, vivo: true };
+let jugador = { 
+  fila: 4, col: 2, vivo: true,
+  nombre: "Caballero",
+  hp: 100, maxHp: 100,
+  retrato: "assets/player.png"
+};
+let enemigo = { 
+  fila: 4, col: 5, vivo: true,
+  nombre: "Bandido",
+  hp: 100, maxHp: 100,
+  retrato: "assets/enemy.png"
+};
 
 let seleccionado = false; // ¿el jugador está seleccionado?
 let celdasMovibles = new Set(); // "f,c" de posiciones alcanzables
@@ -14,30 +24,24 @@ let celdasMovibles = new Set(); // "f,c" de posiciones alcanzables
 const mapa = document.getElementById("mapa");
 const acciones = document.getElementById("acciones");
 const turnoLabel = document.getElementById("turno");
+const ficha = document.getElementById("ficha");
 
 // --- NUEVO: Ajuste responsivo del tamaño de las celdas ---
 function ajustarTamanoTablero() {
-  // Dejamos márgenes para UI/acciones
   const vw = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
   const vh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
 
-  // Espacio disponible (restamos algo para título/botones)
   const margenHorizontal = 24; // px
-  const margenVertical   = 220; // px (título + botones; ajusta si quieres)
-
+  const margenVertical   = 220; // px (título + panel)
   const disponibleAncho = vw - margenHorizontal;
   const disponibleAlto  = vh - margenVertical;
 
-  // El tablero debe caber en el mínimo de ambos
-  const ladoTablero = Math.max(240, Math.min(disponibleAncho, disponibleAlto)); // mínimo 240px para no quedar diminuto
-  const gap = 3; // debe coincidir con --gap en CSS
+  const ladoTablero = Math.max(240, Math.min(disponibleAncho, disponibleAlto));
+  const gap = 3;
   const celdas = 8;
 
-  // Tamaño de cada celda (redondeado para nitidez)
   const cellPx = Math.floor((ladoTablero - (celdas - 1) * gap) / celdas);
-
-  // Límite superior para no generar celdas gigantes en pantallas enormes
-  const cellClamped = Math.min(cellPx, 96); // máx 96px por celda (ajustable)
+  const cellClamped = Math.min(cellPx, 96);
 
   document.documentElement.style.setProperty('--cell', `${cellClamped}px`);
 }
@@ -69,7 +73,6 @@ function dibujarMapa() {
       celda.className = "celda";
       celda.dataset.fila = f;
       celda.dataset.col = c;
-      celda.dataset.pos = `${f},${c}`;
 
       if (seleccionado && celdasMovibles.has(key(f,c))) {
         celda.classList.add("movible");
@@ -78,14 +81,15 @@ function dibujarMapa() {
         celda.classList.add("seleccionada");
       }
 
+      // Inserción de minis
       if (jugador.vivo && jugador.fila === f && jugador.col === c) {
         const pj = document.createElement("div");
-        pj.className = "ficha jugador";
+        pj.className = "fichaMini jugador";
         celda.appendChild(pj);
       }
       if (enemigo.vivo && enemigo.fila === f && enemigo.col === c) {
         const en = document.createElement("div");
-        en.className = "ficha enemigo";
+        en.className = "fichaMini enemigo";
         celda.appendChild(en);
       }
 
@@ -104,10 +108,22 @@ function refrescarUIAcciones() {
     bAtacar.className = "primary";
     bAtacar.textContent = "ATACAR";
     bAtacar.onclick = () => {
-      enemigo.vivo = false;
-      acciones.innerHTML = "<div id='mensaje'>¡Has vencido al enemigo!</div>";
-      setTurno("fin");
-      dibujarMapa();
+      // Ataque del jugador: -50 HP
+      aplicarDanyo(enemigo, 50);
+      renderFicha(enemigo); // refresca barra
+      if (!enemigo.vivo) {
+        acciones.innerHTML = "<div id='mensaje'>¡Has vencido al enemigo!</div>";
+        setTurno("fin");
+        dibujarMapa();
+      } else {
+        // pasa turno al enemigo
+        seleccionado = false;
+        celdasMovibles.clear();
+        dibujarMapa();
+        acciones.innerHTML = "";
+        setTurno("enemigo");
+        setTimeout(turnoEnemigo, 350);
+      }
     };
     acciones.appendChild(bAtacar);
   } else {
@@ -125,10 +141,49 @@ function refrescarUIAcciones() {
   }
 }
 
-// --- Lógica de selección/movimiento ---
+// --- Ficha inferior ---
+function renderFicha(unidad){
+  if (!unidad) { ficha.style.display = "none"; ficha.innerHTML = ""; return; }
+
+  const pct = Math.max(0, Math.min(100, Math.round((unidad.hp / unidad.maxHp) * 100)));
+  const grad = (pct > 50) ? "linear-gradient(90deg, #2ecc71, #27ae60)" :
+               (pct > 25) ? "linear-gradient(90deg, #f1c40f, #e67e22)" :
+                            "linear-gradient(90deg, #e74c3c, #c0392b)";
+
+  ficha.innerHTML = `
+    <div class="card">
+      <div class="portrait" style="background-image:url('${unidad.retrato}')"></div>
+      <div class="info">
+        <p class="name">${unidad.nombre}</p>
+        <div class="hp">
+          <div class="bar"><span style="width:${pct}%; background:${grad}"></span></div>
+          <div class="value">${unidad.hp}/${unidad.maxHp} HP</div>
+        </div>
+      </div>
+    </div>
+  `;
+  ficha.style.display = "block";
+}
+
+function aplicarDanyo(objetivo, cantidad){
+  objetivo.hp = Math.max(0, objetivo.hp - cantidad);
+  if (objetivo.hp <= 0) {
+    objetivo.vivo = false;
+  }
+}
+
+// --- Lógica de selección/movimiento + clicks para mostrar ficha ---
 function manejarClick(f,c){
+  // Mostrar ficha al clickar una unidad, siempre:
+  if (jugador.vivo && f === jugador.fila && c === jugador.col) {
+    renderFicha(jugador);
+  } else if (enemigo.vivo && f === enemigo.fila && c === enemigo.col) {
+    renderFicha(enemigo);
+  }
+
   if (turno !== "jugador" || !jugador.vivo) return;
 
+  // Seleccionar/deseleccionar al jugador
   if (!seleccionado) {
     if (f === jugador.fila && c === jugador.col) {
       seleccionado = true;
@@ -146,12 +201,14 @@ function manejarClick(f,c){
     return;
   }
 
+  // Mover si es una casilla válida y libre
   if (celdasMovibles.has(key(f,c)) && !(enemigo.vivo && enemigo.fila===f && enemigo.col===c)) {
     jugador.fila = f;
     jugador.col = c;
     seleccionado = false;
     celdasMovibles.clear();
     dibujarMapa();
+    // Tras moverte, ofrece ATACAR (si procede) o PASAR TURNO
     refrescarUIAcciones();
   }
 }
@@ -170,13 +227,17 @@ function calcularCeldasMovibles(){
 
 // --- IA Enemiga ---
 function turnoEnemigo(){
-  if (!enemigo.vivo || turno !== "enemigo") { return; }
-
-  if (adyacentes(enemigo, jugador)) {
-    atacarEnemigo();
-    return;
+  if (!enemigo.vivo || turno !== "enemigo") { 
+    if (turno !== "fin") { setTurno("jugador"); }
+    return; 
   }
 
+  // Si ya está adyacente, ataca
+  if (adyacentes(enemigo, jugador)) {
+    return atacarEnemigo();
+  }
+
+  // Mover hasta 'rangoEnemigo' pasos hacia el jugador
   for (let paso=0; paso<rangoEnemigo; paso++){
     const siguiente = pasoHacia(enemigo, jugador);
     if (!siguiente) break;
@@ -222,13 +283,19 @@ function pasoHacia(origen, objetivo){
 }
 
 function atacarEnemigo(){
-  jugador.vivo = false;
+  aplicarDanyo(jugador, 50); // espadazo enemigo
+  renderFicha(jugador);
   dibujarMapa();
-  acciones.innerHTML = "<div id='mensaje' style='color:#842029'>¡Has sido derrotado!</div>";
-  setTurno("fin");
+  if (!jugador.vivo) {
+    acciones.innerHTML = "<div id='mensaje' style='color:#842029'>¡Has sido derrotado!</div>";
+    setTurno("fin");
+  } else {
+    setTurno("jugador");
+    acciones.innerHTML = "";
+  }
 }
 
 // --- Inicio ---
-ajustarTamanoTablero(); // calcula --cell según la pantalla
+ajustarTamanoTablero();
 dibujarMapa();
 setTurno("jugador");
