@@ -1,8 +1,8 @@
-/* build: hud2 */
+/* build: hud2-fixAttacks */
 (function(){
   // --- Parámetros del tablero / HUD ---
   const filas = 8, columnas = 8;
-  const NON_PLAYABLE_BOTTOM_ROWS = 2; // 👈 HUD + 1 fila extra no jugable
+  const NON_PLAYABLE_BOTTOM_ROWS = 2; // HUD + 1 fila extra no jugable
   const PLAYER_MAX_MP = 5;
   const ENEMY_MAX_MP  = 5;
   const ENEMY_BASE_DAMAGE = 50;
@@ -34,7 +34,6 @@
 
   // --- DOM ---
   const mapa = document.getElementById("mapa");
-  const hud = document.getElementById("hud");
   const acciones = document.getElementById("acciones");
   const ficha = document.getElementById("ficha");
   const overlayWin = document.getElementById("overlayWin");
@@ -56,10 +55,8 @@
   function ajustarTamanoTablero(){
     const vw = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
     const vh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
-
     const disponibleAlto  = vh - 12;
     const disponibleAncho = vw - 12;
-
     const lado = Math.floor(Math.min(disponibleAncho, disponibleAlto) / 8) * 8;
     const cell = Math.max(36, Math.floor(lado / 8));
     document.documentElement.style.setProperty('--cell', `${cell}px`);
@@ -72,8 +69,9 @@
   // --- Utilidades ---
   const key = (f,c) => `${f},${c}`;
   const dentro = (f,c) => f>=0 && f<filas && c>=0 && c<columnas;
-  const noJugable = (f) => f >= filas - NON_PLAYABLE_BOTTOM_ROWS; // 👈 2 filas inferiores
+  const noJugable = (f) => f >= filas - NON_PLAYABLE_BOTTOM_ROWS;
   const manhattan = (a,b) => Math.abs(a.fila-b.fila)+Math.abs(a.col-b.col);
+  const enLineaRecta = (a,b) => (a.fila===b.fila) || (a.col===b.col);
 
   // --- Spawns por fase (evita zona no jugable) ---
   function spawnFase(){
@@ -106,7 +104,7 @@
       for (let c=0; c<columnas; c++){
         const celda = document.createElement("div");
         celda.className = "celda";
-        if (noJugable(f)) celda.style.pointerEvents = "none"; // 👈 sin clicks en 2 filas inferiores
+        if (noJugable(f)) celda.style.pointerEvents = "none";
         if (seleccionado && celdasMovibles.has(key(f,c))) celda.classList.add("movible");
         if (seleccionado && seleccionado.fila===f && seleccionado.col===c) celda.classList.add("seleccionada");
 
@@ -150,14 +148,13 @@
     acciones.innerHTML="";
     if (turno!=="jugador" || !unidad?.vivo) return;
 
-    // MP info
     const infoMp = document.createElement("div");
     infoMp.textContent = `MP: ${unidad.mp}/${PLAYER_MAX_MP}`;
     infoMp.style.marginRight = "6px";
     infoMp.style.alignSelf = "center";
     acciones.appendChild(infoMp);
 
-    // Botones de ataque
+    // Botones de ataque válidos EN ESTE MOMENTO
     enemigosEnRango(unidad).forEach(en=>{
       const b=document.createElement("button");
       b.className="primary";
@@ -166,7 +163,7 @@
       acciones.appendChild(b);
     });
 
-    // 👇 SIEMPRE: Terminar turno
+    // SIEMPRE: Terminar turno
     const bTurn=document.createElement("button");
     bTurn.textContent="Terminar turno";
     bTurn.onclick=endTurn;
@@ -204,7 +201,7 @@
       const [f,c]=q.shift();
       for(const [df,dc] of dirs){
         const nf=f+df,nc=c+dc;
-        if(!dentro(nf,nc) || noJugable(nf)) continue; // 👈 evita 2 filas inferiores
+        if(!dentro(nf,nc) || noJugable(nf)) continue;
         const ocupado = enemies.some(e=>e.vivo&&e.fila===nf&&e.col===nc) ||
                         players.some(p=>p.vivo&&p!==u&&p.fila===nf&&p.col===nc);
         if(ocupado) continue;
@@ -220,14 +217,14 @@
   function enemigosEnRango(u){
     return enemies.filter(e=>{
       if(!e.vivo) return false;
-      if(!(u.fila===e.fila || u.col===e.col)) return false; // línea recta
+      if(!enLineaRecta(u,e)) return false;
       const d = Math.abs(u.fila-e.fila)+Math.abs(u.col-e.col);
       return u.range.includes(d);
     });
   }
 
   function manejarClick(f,c){
-    if (noJugable(f)) return; // 👈 ignora clicks en 2 filas inferiores
+    if (noJugable(f)) return;
 
     const pj = players.find(p=>p.vivo&&p.fila===f&&p.col===c);
     const en = enemies.find(e=>e.vivo&&e.fila===f&&e.col===c);
@@ -243,6 +240,7 @@
 
     if (seleccionado){
       if (f===seleccionado.fila && c===seleccionado.col){
+        // Deselect
         seleccionado=null; celdasMovibles.clear(); distSel=null; dibujarMapa(); acciones.innerHTML=""; return;
       }
       const esAlcanzable = celdasMovibles.has(`${f},${c}`);
@@ -256,6 +254,9 @@
         if (seleccionado.mp>0){ calcularCeldasMovibles(seleccionado); }
         else { celdasMovibles.clear(); distSel=null; }
         dibujarMapa(); botonesAccionesPara(seleccionado);
+      } else {
+        // Si el destino no es válido, refrescamos por si había botones stale
+        botonesAccionesPara(seleccionado);
       }
     }
   }
@@ -287,8 +288,30 @@
     if(obj.hp<=0){ obj.vivo=false; efectoMuerte(obj); }
   }
 
+  // --- Validaciones de ataque ---
+  function isAliveEnemyById(id){
+    return enemies.find(e=>e.id===id && e.vivo);
+  }
+  function isAlivePlayerByRef(p){
+    return players.includes(p) && p.vivo;
+  }
+  function stillInRange(attacker, target){
+    if (!target?.vivo) return false;
+    if (!enLineaRecta(attacker, target)) return false;
+    const d = Math.abs(attacker.fila - target.fila) + Math.abs(attacker.col - target.col);
+    return attacker.range.includes(d);
+  }
+
   // --- Combate jugador ---
-  function atacarUnidadA(u, objetivo){
+  function atacarUnidadA(u, objetivoRef){
+    // Revalidar objetivo en el momento del click
+    const objetivo = isAliveEnemyById(objetivoRef.id);
+    if (!objetivo || !stillInRange(u, objetivo)) {
+      // objetivo ya no es válido: refrescamos acciones y salimos
+      botonesAccionesPara(u);
+      return;
+    }
+
     aplicarDanyo(objetivo, u.damage, 'player');
     renderFicha(objetivo);
 
@@ -296,7 +319,6 @@
       if(!objetivo.vivo){
         u.kills=(u.kills||0)+1;
 
-        // ¿fase despejada?
         if (enemies.every(e=>!e.vivo)) {
           if (fase === 1){
             fase = 2;
@@ -310,7 +332,6 @@
         }
       }
 
-      // Tras atacar: acción consumida y MP a 0
       u.acted = true; u.mp = 0;
       seleccionado = null; celdasMovibles.clear(); distSel=null;
       acciones.innerHTML="";
@@ -348,7 +369,7 @@
       // moverse hasta 5 pasos hacia objetivo evitando choques; no entrar en zona no jugable
       const step = (a,b)=> a<b?1:(a>b?-1:0);
       while (en.mp > 0){
-        if (manhattan(en, objetivo) === 1) break; // listo para pegar
+        if (manhattan(en, objetivo) === 1) break;
         const cand = [];
         if (en.fila !== objetivo.fila) cand.push([en.fila + step(en.fila, objetivo.fila), en.col]);
         if (en.col  !== objetivo.col ) cand.push([en.fila, en.col + step(en.col,  objetivo.col )]);
@@ -362,8 +383,8 @@
         if(!moved) break;
       }
 
-      // atacar si adyacente
-      if (manhattan(en, objetivo) === 1 && objetivo.vivo) {
+      // Validar objetivo antes de atacar
+      if (manhattan(en, objetivo) === 1 && isAlivePlayerByRef(objetivo)) {
         aplicarDanyo(objetivo, ENEMY_BASE_DAMAGE, 'enemy');
       }
     }
@@ -376,7 +397,6 @@
       setTurno("fin");
     } else {
       setTurno("jugador");
-      // ¿oleada despejada por IA?
       if (enemies.every(e=>!e.vivo)) {
         if (fase === 1){ fase = 2; spawnFase(); dibujarMapa(); }
         else if (fase === 2){ fase = 3; overlayWin.style.display="grid"; }
