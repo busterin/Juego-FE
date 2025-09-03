@@ -15,6 +15,36 @@ const mapa = document.getElementById("mapa");
 const acciones = document.getElementById("acciones");
 const turnoLabel = document.getElementById("turno");
 
+// --- NUEVO: Ajuste responsivo del tamaño de las celdas ---
+function ajustarTamanoTablero() {
+  // Dejamos márgenes para UI/acciones
+  const vw = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
+  const vh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
+
+  // Espacio disponible (restamos algo para título/botones)
+  const margenHorizontal = 24; // px
+  const margenVertical   = 220; // px (título + botones; ajusta si quieres)
+
+  const disponibleAncho = vw - margenHorizontal;
+  const disponibleAlto  = vh - margenVertical;
+
+  // El tablero debe caber en el mínimo de ambos
+  const ladoTablero = Math.max(240, Math.min(disponibleAncho, disponibleAlto)); // mínimo 240px para no quedar diminuto
+  const gap = 3; // debe coincidir con --gap en CSS
+  const celdas = 8;
+
+  // Tamaño de cada celda (redondeado para nitidez)
+  const cellPx = Math.floor((ladoTablero - (celdas - 1) * gap) / celdas);
+
+  // Límite superior para no generar celdas gigantes en pantallas enormes
+  const cellClamped = Math.min(cellPx, 96); // máx 96px por celda (ajustable)
+
+  document.documentElement.style.setProperty('--cell', `${cellClamped}px`);
+}
+
+window.addEventListener('resize', ajustarTamanoTablero);
+window.addEventListener('orientationchange', ajustarTamanoTablero);
+
 // --- Utilidades ---
 const key = (f,c) => `${f},${c}`;
 const dentro = (f,c) => f>=0 && f<filas && c>=0 && c<columnas;
@@ -199,5 +229,6 @@ function atacarEnemigo(){
 }
 
 // --- Inicio ---
+ajustarTamanoTablero(); // calcula --cell según la pantalla
 dibujarMapa();
 setTurno("jugador");
