@@ -2,15 +2,15 @@
 const filas = 8, columnas = 8;
 const rangoJugador = 3;   // puntos de movimiento de unidades del jugador
 const rangoEnemigo = 2;   // puntos de movimiento de cada enemigo
-const ENEMY_BASE_DAMAGE = 50;
-const STORAGE_KEY = "mini-tactico-progress-v2";
+const ENEMY_BASE_DAMAGE = 50;   // daño fijo de enemigos
+const STORAGE_KEY = "tactic-heroes-v1";
 
 // --- Terrenos y costes ---
 const TL = "llanura", BO = "bosque", AG = "agua", MO = "montana";
 const terrainCost = { [TL]:1, [BO]:2, [AG]:Infinity, [MO]:Infinity };
 const passable = t => terrainCost[t] !== Infinity;
 
-// Mapa 8x8
+// Mapa 8x8 de ejemplo (edítalo a gusto)
 let tilemap = [
   [TL,TL,TL,TL,BO,BO,TL,TL],
   [TL,TL,BO,BO,BO,TL,TL,TL],
@@ -24,10 +24,10 @@ let tilemap = [
 
 // --- Estado general ---
 let turno = "jugador"; // 'jugador' | 'enemigo' | 'fin'
-let wave = 1;          // oleada actual
-let enemies = [];      // array de enemigos vivos
+let wave = 1;          // oleada (no se muestra, pero la usamos)
+let enemies = [];      // lista de enemigos
 
-// --- Unidades del jugador (dos) ---
+// --- Unidades del jugador ---
 const makeKnight = () => ({
   tipo: "caballero",
   fila: 4, col: 2, vivo: true,
@@ -37,7 +37,7 @@ const makeKnight = () => ({
   nivel: 1, kills: 0,
   damage: 50,
   range: [1],            // solo adyacente
-  acted: false           // ya actuó este turno
+  acted: false
 });
 
 const makeArcher = () => ({
@@ -47,23 +47,21 @@ const makeArcher = () => ({
   hp: 80, maxHp: 80,
   retrato: "assets/archer.png",
   nivel: 1, kills: 0,
-  damage: 40,
-  range: [1,2],          // 1 o 2 casillas en línea recta
+  damage: 50,           // pedido: 50 de daño
+  range: [2],           // SOLO a 2 casillas exactas en línea recta
   acted: false
 });
 
 let players = [ makeKnight(), makeArcher() ];
 
-let seleccionado = null;             // unidad del jugador seleccionada (objeto)
+let seleccionado = null;             // unidad propia seleccionada
 let celdasMovibles = new Set();      // "f,c" alcanzables con coste
-let ultimoObjetivo = null;
 
 // --- DOM ---
 const mapa = document.getElementById("mapa");
 const acciones = document.getElementById("acciones");
 const turnoLabel = document.getElementById("turno");
 const ficha = document.getElementById("ficha");
-const estado = document.getElementById("estado");
 const btnFinTurno = document.getElementById("btnFinTurno");
 
 // --- Guardado / Carga ---
@@ -78,8 +76,8 @@ function saveProgress() {
     }))
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  flashEstado("Progreso guardado.");
 }
+
 function loadProgress() {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) return false;
@@ -87,18 +85,18 @@ function loadProgress() {
     const d = JSON.parse(raw);
     wave = d.wave ?? 1;
     if (Array.isArray(d.players) && d.players.length === 2){
-      // reconstruye manteniendo tipos/rangos
       const pk = makeKnight(), pa = makeArcher();
       const srcK = d.players.find(x=>x.tipo==="caballero") || pk;
       const srcA = d.players.find(x=>x.tipo==="arquera") || pa;
       players = [
         Object.assign(pk, srcK, {range:[1]}),
-        Object.assign(pa, srcA, {range:[1,2]})
+        Object.assign(pa, srcA, {range:[2]})
       ];
     }
     return true;
   } catch { return false; }
 }
+
 function resetProgress() {
   localStorage.removeItem(STORAGE_KEY);
   wave = 1;
@@ -106,25 +104,10 @@ function resetProgress() {
   enemies = [];
   seleccionado = null;
   celdasMovibles.clear();
-  ultimoObjetivo = null;
-  flashEstado("Progreso reiniciado.");
   spawnWave();
   dibujarMapa();
   setTurno("jugador");
   renderFicha(null);
-}
-
-// --- UI Estado ---
-function flashEstado(msg){
-  const alive = players.filter(p=>p.vivo);
-  const resumen = alive.map(p=>`${p.nombre} ${p.hp}/${p.maxHp}`).join(" · ");
-  estado.textContent = `Oleada ${wave} — ${resumen} — ${msg}`;
-  setTimeout(updateEstado, 1400);
-}
-function updateEstado(){
-  const alive = players.filter(p=>p.vivo);
-  const resumen = alive.map(p=>`${p.nombre} N${p.nivel} DAÑO ${p.damage} HP ${p.hp}/${p.maxHp}`).join(" · ");
-  estado.textContent = `Oleada ${wave} · ${resumen} · Enemigos ${enemies.filter(e=>e.vivo).length}`;
 }
 
 // --- Ajuste responsivo del tamaño de las celdas ---
@@ -158,7 +141,10 @@ function setTurno(t){
 function spawnWave(){
   enemies = [];
   const count = Math.min(2 + wave, 6);
-  const ocupadas = new Set(players.filter(p=>p.vivo).map(p=>key(p.fila,p.col)));
+  const ocupadas = new Set([
+    ...players.filter(p=>p.vivo).map(p=>key(p.fila,p.col))
+  ]);
+
   for (let i=0; i<count; i++){
     let f,c;
     do {
@@ -173,13 +159,12 @@ function spawnWave(){
       id: `E${Date.now()}-${i}`,
       nombre: `Bandido ${i+1}`,
       fila: f, col: c, vivo: true,
-      hp: 100, maxHp: 100,
+      hp: 50, maxHp: 50,                // 50 de vida
       retrato: "assets/enemy.png",
-      damage: ENEMY_BASE_DAMAGE
+      damage: ENEMY_BASE_DAMAGE         // 50 de daño
     });
   }
-  updateEstado();
-  // Al empezar turno del jugador, reset acciones
+  // Al empezar turno del jugador, reset de acciones
   if (turno==="jugador") players.forEach(p=>p.acted=false);
 }
 
@@ -223,7 +208,6 @@ function botonesAccionesPara(unidad){
   acciones.innerHTML = "";
   if (turno !== "jugador" || !unidad?.vivo) return;
 
-  // "Terminar acción" para esta unidad (por si no quiere atacar)
   const bEnd = document.createElement("button");
   bEnd.textContent = "Terminar acción";
   bEnd.onclick = () => {
@@ -236,9 +220,8 @@ function botonesAccionesPara(unidad){
   };
   acciones.appendChild(bEnd);
 
-  // Ataques posibles
-  const adj = enemigosEnRango(unidad);
-  adj.forEach(en => {
+  const objetivos = enemigosEnRango(unidad);
+  objetivos.forEach(en => {
     const b = document.createElement("button");
     b.className = "primary";
     b.textContent = `ATACAR ${en.nombre} (-${unidad.damage})`;
@@ -284,18 +267,45 @@ function renderFicha(unidad){
   ficha.style.display = "block";
 }
 
-function aplicarDanyo(objetivo, cantidad){
-  objetivo.hp = Math.max(0, objetivo.hp - cantidad);
-  if (objetivo.hp <= 0) objetivo.vivo = false;
+// --- FX de ataque: flash, parpadeo y número flotante ---
+function efectoAtaque(objetivo, cantidad, fuente /* 'player' | 'enemy' */){
+  const idx = objetivo.fila * columnas + objetivo.col;
+  const celda = mapa.children[idx];
+  if (!celda) return;
+
+  // Flash según fuente
+  const flashClass = (fuente === 'enemy') ? 'flash-enemy' : 'flash-player';
+  celda.classList.add(flashClass);
+  setTimeout(() => celda.classList.remove(flashClass), 280);
+
+  // Parpadeo en el sprite
+  const sprite = celda.firstElementChild;
+  if (sprite) {
+    sprite.classList.add('blink-hit');
+    setTimeout(() => sprite.classList.remove('blink-hit'), 1200);
+  }
+
+  // Número flotante
+  const dmg = document.createElement('div');
+  dmg.className = 'dmg-float ' + (fuente === 'enemy' ? 'dmg-enemy' : 'dmg-player');
+  dmg.textContent = `-${cantidad}`;
+  celda.appendChild(dmg);
+  setTimeout(()=>{ if (dmg.parentNode) dmg.parentNode.removeChild(dmg); }, 650);
 }
 
+function aplicarDanyo(objetivo, cantidad, fuente /* 'player' | 'enemy' */){
+  objetivo.hp = Math.max(0, objetivo.hp - cantidad);
+  if (objetivo.hp <= 0) objetivo.vivo = false;
+  efectoAtaque(objetivo, cantidad, fuente);
+}
+
+// --- Subida de nivel (cada 3 kills por unidad) ---
 function comprobarSubidaNivel(pj){
   if (pj.kills > 0 && pj.kills % 3 === 0) {
     pj.nivel += 1;
     pj.maxHp += 10;
     pj.hp = Math.min(pj.maxHp, pj.hp + 10);
     pj.damage += 10;
-    flashEstado(`¡${pj.nombre} sube a nivel ${pj.nivel}! (+10 HP máx, +10 daño)`);
     renderFicha(pj);
     saveProgress();
     return true;
@@ -303,7 +313,7 @@ function comprobarSubidaNivel(pj){
   return false;
 }
 
-// --- Rangos y BFS movimiento ---
+// --- Movimiento (BFS por coste) ---
 function calcularCeldasMovibles(unidad){
   celdasMovibles.clear();
   const coste = Array.from({length: filas}, ()=>Array(columnas).fill(Infinity));
@@ -319,7 +329,8 @@ function calcularCeldasMovibles(unidad){
       if (!dentro(nf,nc)) continue;
       const terr = tilemap[nf][nc];
       if (!passable(terr)) continue;
-      // ocupación por jugadores o enemigos
+
+      // ocupado por cualquier unidad (aliada/enemiga) ≡ no pasas
       const ocupado = enemies.some(e=>e.vivo && e.fila===nf && e.col===nc) ||
                       players.some(p=>p.vivo && p!==unidad && p.fila===nf && p.col===nc);
       if (ocupado) continue;
@@ -343,21 +354,19 @@ function calcularCeldasMovibles(unidad){
 function enemigosEnRango(unidad){
   return enemies.filter(e=>{
     if (!e.vivo) return false;
-    const dRow = Math.abs(unidad.fila - e.fila);
-    const dCol = Math.abs(unidad.col - e.col);
     if (!enLineaRecta(unidad, e)) return false; // sólo ortogonal
-    const dist = dRow + dCol; // porque una de las dos es 0
-    return unidad.range.includes(dist);
+    const d = Math.abs(unidad.fila - e.fila) + Math.abs(unidad.col - e.col);
+    return unidad.range.includes(d);
   });
 }
 
 // --- Clicks ---
 function manejarClick(f,c){
-  // Mostrar ficha si es unidad
+  // Mostrar ficha si hay unidad
   const pj = players.find(p=>p.vivo && p.fila===f && p.col===c);
   const en = enemies.find(e=>e.vivo && e.fila===f && e.col===c);
-  if (pj){ renderFicha(pj); ultimoObjetivo = null; }
-  else if (en){ renderFicha(en); ultimoObjetivo = en; }
+  if (pj){ renderFicha(pj); }
+  else if (en){ renderFicha(en); }
 
   if (turno !== "jugador") return;
 
@@ -393,8 +402,6 @@ function manejarClick(f,c){
     const terr = tilemap[f][c];
     if (passable(terr) && esAlcanzable && !ocupado){
       seleccionado.fila = f; seleccionado.col = c;
-      // Tras moverte, puedes atacar si hay objetivos válidos; si no, puedes terminar acción.
-      calcularCeldasMovibles(seleccionado); // por estética, pero ya no se usa
       dibujarMapa();
       botonesAccionesPara(seleccionado);
     }
@@ -403,37 +410,34 @@ function manejarClick(f,c){
 
 // --- Combate ---
 function atacarUnidadA(unidad, objetivo){
-  aplicarDanyo(objetivo, unidad.damage);
+  aplicarDanyo(objetivo, unidad.damage, 'player');
   renderFicha(objetivo);
   if (!objetivo.vivo){
     unidad.kills += 1;
+
     // ¿fin de oleada?
     if (enemies.every(e => !e.vivo)) {
       wave += 1;
-      flashEstado(`¡Oleada superada! Preparando oleada ${wave}...`);
-      saveProgress();
-      // cerrar acción del atacante
       unidad.acted = true;
       seleccionado = null;
       celdasMovibles.clear();
       dibujarMapa();
-      acciones.innerHTML = "";
+      acciones.innerHTML = "<div id='mensaje'>¡Oleada superada!</div>";
       setTimeout(()=>{
         spawnWave();
         dibujarMapa();
         setTurno("jugador");
         acciones.innerHTML = "";
-        updateEstado();
-        // al empezar la nueva oleada, las acciones se resetean
         players.forEach(p=>p.acted=false);
       }, 500);
       return;
     }
+
     const subio = comprobarSubidaNivel(unidad);
     dibujarMapa();
-    if (subio) { /* te quedas en turno jugador */ }
+    if (subio) { /* turno sigue en jugador */ }
   }
-  // Marcar que esta unidad ya actuó
+  // Tras atacar, esa unidad gasta su acción
   unidad.acted = true;
   seleccionado = null;
   celdasMovibles.clear();
@@ -443,18 +447,17 @@ function atacarUnidadA(unidad, objetivo){
 }
 
 function comprobarCambioATurnoEnemigo(){
-  // Si todas las unidades del jugador han gastado su acción, pasa el turno
   if (players.every(p => !p.vivo || p.acted)) {
     setTurno("enemigo");
     setTimeout(turnoIAEnemigos, 300);
   }
 }
 
-// --- IA Enemiga con BFS simple ---
+// --- IA Enemiga ---
 function turnoIAEnemigos(){
   if (turno !== "enemigo") return;
-  const vivosJugador = players.filter(p=>p.vivo);
-  if (vivosJugador.length === 0) {
+  const objetivos = players.filter(p=>p.vivo);
+  if (objetivos.length === 0) {
     acciones.innerHTML = "<div id='mensaje' style='color:#842029'>¡Has sido derrotado!</div>";
     setTurno("fin"); return;
   }
@@ -463,18 +466,18 @@ function turnoIAEnemigos(){
     if (!en.vivo) continue;
 
     // objetivo: el jugador más cercano
-    let objetivo = vivosJugador[0];
+    let objetivo = objetivos[0];
     let mejor = manhattan(en, objetivo);
-    for (const p of vivosJugador){
+    for (const p of objetivos){
       const d = manhattan(en, p);
       if (d < mejor){ mejor = d; objetivo = p; }
     }
 
     // Si ya está adyacente, ataca
     if (manhattan(en, objetivo) === 1) {
-      aplicarDanyo(objetivo, en.damage);
+      aplicarDanyo(objetivo, en.damage, 'enemy');
     } else {
-      // Moverse hacia el objetivo (sin entrar en impasables ni chocar)
+      // Mover hacia el objetivo (BFS evitando impasables y choques)
       const path = shortestPath(en.fila, en.col, objetivo.fila, objetivo.col, true);
       if (path.length > 1){
         let pasos = Math.min(rangoEnemigo, path.length-1);
@@ -488,7 +491,7 @@ function turnoIAEnemigos(){
         }
       }
       if (manhattan(en, objetivo) === 1) {
-        aplicarDanyo(objetivo, en.damage);
+        aplicarDanyo(objetivo, en.damage, 'enemy');
       }
     }
   }
@@ -552,7 +555,9 @@ function init(){
   spawnWave();
   dibujarMapa();
   setTurno("jugador");
-  updateEstado();
   renderFicha(null);
+
+  document.getElementById("btnGuardar").onclick = saveProgress;
+  document.getElementById("btnReset").onclick = resetProgress;
 }
 init();
