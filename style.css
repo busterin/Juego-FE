@@ -48,15 +48,6 @@ body {
   position: relative;
 }
 
-.celda::after {
-  content: attr(data-pos);
-  position: absolute;
-  bottom: 2px;
-  right: 4px;
-  font-size: 10px;
-  color: #9aa6b2;
-}
-
 .celda.movible {
   outline: 3px solid rgba(48, 140, 255, 0.55);
   background: #eaf3ff;
