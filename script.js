@@ -1,8 +1,8 @@
-/* build: mp5 */
+/* build: turnBanner1 */
 (function(){
-  // --- Parámetros del tablero ---
+  // --- Parámetros del tablero / combate ---
   const filas = 8, columnas = 8;
-  const PLAYER_MAX_MP = 5;   // 👈 movimiento por turno (casillas)
+  const PLAYER_MAX_MP = 5;
   const ENEMY_MAX_MP  = 5;
   const ENEMY_BASE_DAMAGE = 50;
 
@@ -12,66 +12,56 @@
   let enemies = [];
   let seleccionado = null;
   let celdasMovibles = new Set();
-  let distSel = null;     // matriz de distancias de la unidad seleccionada
+  let distSel = null;
 
   // --- Unidades del jugador ---
   const makeKnight = () => ({
-    id: "K",
-    tipo: "caballero",
+    id: "K", tipo: "caballero",
     fila: 4, col: 2, vivo: true,
-    nombre: "Caballero",
-    hp: 100, maxHp: 100,
-    retrato: "assets/player.png",
-    nivel: 1, kills: 0,
-    damage: 50,
-    range: [1],
-    acted: false,
-    mp: PLAYER_MAX_MP
+    nombre: "Caballero", hp: 100, maxHp: 100,
+    retrato: "assets/player.png", nivel: 1, kills: 0,
+    damage: 50, range: [1], acted: false, mp: PLAYER_MAX_MP
   });
-
   const makeArcher = () => ({
-    id: "A",
-    tipo: "arquera",
+    id: "A", tipo: "arquera",
     fila: 5, col: 2, vivo: true,
-    nombre: "Arquera",
-    hp: 80, maxHp: 80,
-    retrato: "assets/archer.png",
-    nivel: 1, kills: 0,
-    damage: 50,
-    range: [2],       // solo a 2 exactas
-    acted: false,
-    mp: PLAYER_MAX_MP
+    nombre: "Arquera", hp: 80, maxHp: 80,
+    retrato: "assets/archer.png", nivel: 1, kills: 0,
+    damage: 50, range: [2], acted: false, mp: PLAYER_MAX_MP
   });
-
   let players = [ makeKnight(), makeArcher() ];
 
   // --- DOM ---
   const mapa = document.getElementById("mapa");
   const acciones = document.getElementById("acciones");
-  const turnoLabel = document.getElementById("turno");
   const ficha = document.getElementById("ficha");
-  const btnFinTurno = document.getElementById("btnFinTurno");
   const overlayWin = document.getElementById("overlayWin");
   const btnContinuar = document.getElementById("btnContinuar");
+  const turnBanner = document.getElementById("turnBanner");
 
-  // --- Tamaño: tablero ocupa lo máximo posible manteniendo cuadrado ---
+  // --- Banner de turno ---
+  function showTurnBanner(text){
+    turnBanner.textContent = text;
+    turnBanner.style.display = "block";
+    setTimeout(()=>{ turnBanner.style.display = "none"; }, 1300);
+  }
+
+  // --- Tamaño máximo del tablero (sin scroll) ---
   function ajustarTamanoTablero(){
     const vw = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
     const vh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
 
-    const uiH = document.getElementById('ui')?.getBoundingClientRect().height || 0;
     const panelH = document.getElementById('panel')?.getBoundingClientRect().height || 0;
-
-    const disponibleAlto  = Math.max(220, vh - uiH - panelH - 12);
+    const disponibleAlto  = Math.max(200, vh - panelH - 10);
     const disponibleAncho = vw - 12;
 
     const lado = Math.floor(Math.min(disponibleAncho, disponibleAlto) / 8) * 8;
-    const cell = Math.max(40, Math.floor(lado / 8)); // mínimo 40px
+    const cell = Math.max(36, Math.floor(lado / 8)); // mínimo 36px en pantallas muy pequeñas
     document.documentElement.style.setProperty('--cell', `${cell}px`);
     mapa.style.width  = `${cell * 8}px`;
     mapa.style.height = `${cell * 8}px`;
 
-    // Panel encaja exactamente al tablero (por si redimensiona)
+    // Panel encaja exactamente al tablero
     document.getElementById("panel").style.width = `${cell * 8}px`;
   }
   window.addEventListener('resize', ajustarTamanoTablero);
@@ -82,10 +72,10 @@
   const dentro = (f,c) => f>=0 && f<filas && c>=0 && c<columnas;
   const manhattan = (a,b) => Math.abs(a.fila-b.fila)+Math.abs(a.col-b.col);
   const enLineaRecta = (a,b) => (a.fila===b.fila) || (a.col===b.col);
+
   function setTurno(t){
     turno = t;
-    turnoLabel.textContent = (t === "jugador") ? "TU TURNO" :
-                             (t === "enemigo") ? "TURNO ENEMIGO" : "FIN DE PARTIDA";
+    showTurnBanner(t==="jugador" ? "TU TURNO" : t==="enemigo" ? "TURNO ENEMIGO" : "FIN DE PARTIDA");
   }
 
   // --- Spawns por fase ---
@@ -101,7 +91,7 @@
       ocupadas.add(key(f,c));
       enemies.push({
         id:`E${Date.now()}-${i}`,
-        nombre:`Bandido ${i+1}`,
+        nombre:`Bandido ${i+1 + (fase===2?3:0)}`,
         fila:f, col:c, vivo:true,
         hp:50, maxHp:50,
         retrato:"assets/enemy.png",
@@ -109,7 +99,7 @@
         mp: ENEMY_MAX_MP
       });
     }
-    // Resetea MPs de jugadores al inicio de tu turno (para la nueva fase)
+    // Al empezar fase en turno del jugador, restaurar MPs si procede
     if (turno==="jugador") players.forEach(p=>{ p.acted=false; p.mp=PLAYER_MAX_MP; });
   }
 
@@ -124,7 +114,7 @@
         if (seleccionado && seleccionado.fila===f && seleccionado.col===c) celda.classList.add("seleccionada");
 
         // Jugadores
-        players.forEach(p=>{
+        for (const p of players){
           if (p.vivo && p.fila===f && p.col===c){
             const img = document.createElement("img");
             img.src = (p.tipo==="caballero") ? "assets/player.png" : "assets/archer.png";
@@ -132,9 +122,9 @@
             img.className = "fichaMiniImg";
             celda.appendChild(img);
           }
-        });
+        }
         // Enemigos
-        enemies.forEach(e=>{
+        for (const e of enemies){
           if (e.vivo && e.fila===f && e.col===c){
             const img = document.createElement("img");
             img.src = "assets/enemy.png";
@@ -142,7 +132,7 @@
             img.className = "fichaMiniImg";
             celda.appendChild(img);
           }
-        });
+        }
 
         celda.addEventListener("click", ()=>manejarClick(f,c));
         mapa.appendChild(celda);
@@ -150,22 +140,19 @@
     }
   }
 
-  // --- Acciones y panel ---
+  // --- Panel y acciones ---
   function botonesAccionesPara(unidad){
+    const acciones = document.getElementById("acciones");
     acciones.innerHTML="";
     if (turno!=="jugador" || !unidad?.vivo) return;
 
     const infoMp = document.createElement("div");
     infoMp.textContent = `MP: ${unidad.mp}/${PLAYER_MAX_MP}`;
-    infoMp.style.marginRight = "8px";
+    infoMp.style.marginRight = "6px";
     infoMp.style.alignSelf = "center";
     acciones.appendChild(infoMp);
 
-    const bEnd=document.createElement("button");
-    bEnd.textContent="Terminar acción";
-    bEnd.onclick=()=>{ unidad.acted=true; seleccionado=null; celdasMovibles.clear(); distSel=null; dibujarMapa(); acciones.innerHTML=""; comprobarCambioATurnoEnemigo(); };
-    acciones.appendChild(bEnd);
-
+    // Botones de ataque (compactos)
     enemigosEnRango(unidad).forEach(en=>{
       const b=document.createElement("button");
       b.className="primary";
@@ -175,21 +162,14 @@
     });
   }
 
-  btnFinTurno.onclick = ()=>{
-    if (turno!=="jugador") return;
-    players.forEach(p=>{ p.acted=true; p.mp=0; });
-    seleccionado=null; celdasMovibles.clear(); distSel=null; acciones.innerHTML="";
-    setTurno("enemigo");
-    setTimeout(turnoIAEnemigos, 150);
-  };
-
-  // --- Ficha ---
+  // --- Ficha inferior ---
   function renderFicha(u){
+    const ficha = document.getElementById("ficha");
     if(!u){ ficha.style.display="none"; ficha.innerHTML=""; return; }
     const pct = Math.max(0, Math.min(100, Math.round((u.hp/u.maxHp)*100)));
     const grad = (pct>50)?"linear-gradient(90deg,#2ecc71,#27ae60)":(pct>25)?"linear-gradient(90deg,#f1c40f,#e67e22)":"linear-gradient(90deg,#e74c3c,#c0392b)";
     const esJ = players.includes(u);
-    const extra = esJ?`<p class="meta">Nivel <b>${u.nivel}</b> · Daño <b>${u.damage}</b> · KOs <b>${u.kills}</b> · MP <b>${u.mp}</b>/${PLAYER_MAX_MP}${u.acted?" · Acción gastada":""}</p>`:"";
+    const extra = esJ?`<p class="meta">Daño <b>${u.damage}</b> · KOs <b>${u.kills}</b> · MP <b>${u.mp}</b>/${PLAYER_MAX_MP}</p>`:"";
     ficha.innerHTML = `
       <div class="card">
         <div class="portrait" style="background-image:url('${u.retrato}')"></div>
@@ -224,7 +204,7 @@
       }
     }
     for(let f=0;f<8;f++) for(let c=0;c<8;c++){
-      if(!(f===u.fila && c===u.col) && distSel[f][c]<=u.mp) celdasMovibles.add(key(f,c));
+      if(!(f===u.fila && c===u.col) && distSel[f][c]<=u.mp) celdasMovibles.add(`${f},${c}`);
     }
   }
 
@@ -245,21 +225,20 @@
     if (turno!=="jugador") return;
 
     if (pj){
-      if (pj.acted){ seleccionado=null; celdasMovibles.clear(); distSel=null; dibujarMapa(); acciones.innerHTML=""; return; }
+      if (pj.acted){ seleccionado=null; celdasMovibles.clear(); distSel=null; dibujarMapa(); document.getElementById("acciones").innerHTML=""; return; }
       seleccionado=pj; if (seleccionado.mp>0) calcularCeldasMovibles(seleccionado); else { celdasMovibles.clear(); distSel=null; }
       dibujarMapa(); botonesAccionesPara(seleccionado); return;
     }
 
     if (seleccionado){
       if (f===seleccionado.fila && c===seleccionado.col){
-        seleccionado=null; celdasMovibles.clear(); distSel=null; dibujarMapa(); acciones.innerHTML=""; return;
+        seleccionado=null; celdasMovibles.clear(); distSel=null; dibujarMapa(); document.getElementById("acciones").innerHTML=""; return;
       }
-      const objetivo = key(f,c);
-      const esAlcanzable = celdasMovibles.has(objetivo);
+      const esAlcanzable = celdasMovibles.has(`${f},${c}`);
       const ocupado = enemies.some(e=>e.vivo&&e.fila===f&&e.col===c) ||
                       players.some(p=>p.vivo&&p!==seleccionado&&p.fila===f&&p.col===c);
       if (esAlcanzable && !ocupado){
-        const coste = distSel[f][c] || 0;     // casillas consumidas
+        const coste = distSel[f][c] || 0;
         seleccionado.fila=f; seleccionado.col=c;
         seleccionado.mp = Math.max(0, seleccionado.mp - coste);
         renderFicha(seleccionado);
@@ -301,35 +280,38 @@
   function atacarUnidadA(u, objetivo){
     aplicarDanyo(objetivo, u.damage, 'player');
     renderFicha(objetivo);
-    if(!objetivo.vivo){
-      u.kills=(u.kills||0)+1;
-      // ¿fase despejada?
-      if (enemies.every(e=>!e.vivo)) {
-        if (fase === 1){
-          fase = 2;
-          setTimeout(()=>{ spawnFase(); dibujarMapa(); }, 450);
-        } else if (fase === 2){
-          fase = 3;
-          // NIVEL COMPLETADO
-          setTurno("fin");
-          setTimeout(()=>{ overlayWin.style.display="grid"; }, 350);
+
+    setTimeout(()=>{
+      if(!objetivo.vivo){
+        u.kills=(u.kills||0)+1;
+
+        // ¿fase despejada?
+        if (enemies.every(e=>!e.vivo)) {
+          if (fase === 1){
+            fase = 2;
+            spawnFase();
+            dibujarMapa();
+          } else if (fase === 2){
+            fase = 3;
+            setTurno("fin");
+            overlayWin.style.display="grid";
+          }
         }
       }
-    }
-    // tras atacar no puedes mover más (finaliza acción)
-    u.acted = true;
-    u.mp = 0;
-    seleccionado = null;
-    celdasMovibles.clear(); distSel=null;
-    acciones.innerHTML = "";
-    dibujarMapa();
-    comprobarCambioATurnoEnemigo();
+
+      // Tras atacar: acción consumida y MP a 0
+      u.acted = true; u.mp = 0;
+      seleccionado = null; celdasMovibles.clear(); distSel=null;
+      document.getElementById("acciones").innerHTML="";
+      dibujarMapa();
+      comprobarCambioATurnoEnemigo();
+    }, 650);
   }
 
   function comprobarCambioATurnoEnemigo(){
-    if (players.every(p => !p.vivo || p.acted)) {
+    if (players.every(p => !p.vivo || p.acted || p.mp===0)) {
       setTurno("enemigo");
-      setTimeout(turnoIAEnemigos, 150);
+      setTimeout(turnoIAEnemigos, 130);
     }
   }
 
@@ -352,54 +334,53 @@
         if (d < mejor){ mejor = d; objetivo = p; }
       }
 
-      // mover hasta 5 pasos hacia objetivo evitando choques
+      // moverse hasta 5 pasos hacia objetivo evitando choques
       const step = (a,b)=> a<b?1:(a>b?-1:0);
       while (en.mp > 0){
-        if (manhattan(en, objetivo) === 1) break; // ya listo para pegar
-        const candidatos = [];
-        if (en.fila !== objetivo.fila) candidatos.push([en.fila + step(en.fila, objetivo.fila), en.col]);
-        if (en.col  !== objetivo.col ) candidatos.push([en.fila, en.col + step(en.col,  objetivo.col )]);
-        // intenta ambos ejes, prioridad por fila
+        if (manhattan(en, objetivo) === 1) break; // listo para pegar
+        const cand = [];
+        if (en.fila !== objetivo.fila) cand.push([en.fila + step(en.fila, objetivo.fila), en.col]);
+        if (en.col  !== objetivo.col ) cand.push([en.fila, en.col + step(en.col,  objetivo.col )]);
         let moved = false;
-        for (const [nf,nc] of candidatos){
-          if (!dentro(nf,nc)) continue;
+        for (const [nf,nc] of cand){
+          if(!dentro(nf,nc)) continue;
           const ocupado = enemies.some(o=>o!==en && o.vivo && o.fila===nf && o.col===nc) ||
                           players.some(p=>p.vivo && p.fila===nf && p.col===nc);
-          if (!ocupado){ en.fila = nf; en.col = nc; en.mp--; moved = true; break; }
+          if(!ocupado){ en.fila=nf; en.col=nc; en.mp--; moved=true; break; }
         }
-        if (!moved) break; // bloqueado
+        if(!moved) break;
       }
 
       // atacar si adyacente
-      if (manhattan(en, objetivo) === 1) {
-        aplicarDanyo(objetivo, en.damage, 'enemy');
+      if (manhattan(en, objetivo) === 1 && objetivo.vivo) {
+        aplicarDanyo(objetivo, ENEMY_BASE_DAMAGE, 'enemy');
       }
     }
 
-    // fin de turno enemigo → vuelve al jugador
+    // Fin de turno enemigo → vuelve al jugador
     players.forEach(p=>{ if(p.hp<=0) p.vivo=false; p.acted=false; p.mp = PLAYER_MAX_MP; });
-    renderFicha(players.find(p=>p.vivo) || null);
     dibujarMapa();
 
     if (players.every(p=>!p.vivo)) {
       setTurno("fin");
     } else {
       setTurno("jugador");
-      acciones.innerHTML = "";
+      // ¿oleada despejada por daño de IA?
+      if (enemies.every(e=>!e.vivo)) {
+        if (fase === 1){ fase = 2; spawnFase(); dibujarMapa(); }
+        else if (fase === 2){ fase = 3; overlayWin.style.display="grid"; }
+      }
     }
   }
 
   // --- Inicio ---
   function init(){
     ajustarTamanoTablero();
-    // Fase 1
     spawnFase();
     dibujarMapa();
-    setTurno("jugador");
+    setTurno("jugador"); // lanza banner
     renderFicha(null);
 
-    document.getElementById("btnGuardar").onclick = ()=>{}; // (stub opcional)
-    document.getElementById("btnReset").onclick = ()=>{ location.reload(); };
     btnContinuar.onclick = ()=>{ overlayWin.style.display="none"; location.reload(); };
   }
   init();
