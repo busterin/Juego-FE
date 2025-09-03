@@ -3,14 +3,23 @@ const filas = 8, columnas = 8;
 const rangoJugador = 3;
 const rangoEnemigo = 2;
 
+const ENEMY_BASE_DAMAGE = 50; // daño del enemigo (constante)
+
 // Estado
 let turno = "jugador"; // 'jugador' | 'enemigo' | 'fin'
+
+// Personaje del jugador con sistema de nivel
 let jugador = { 
   fila: 4, col: 2, vivo: true,
   nombre: "Caballero",
   hp: 100, maxHp: 100,
-  retrato: "assets/player.png"
+  retrato: "assets/player.png",
+  nivel: 1,
+  kills: 0,
+  damage: 50 // daño actual (sube +10 por nivel)
 };
+
+// Enemigo básico
 let enemigo = { 
   fila: 4, col: 5, vivo: true,
   nombre: "Bandido",
@@ -18,15 +27,15 @@ let enemigo = {
   retrato: "assets/enemy.png"
 };
 
-let seleccionado = false; // ¿el jugador está seleccionado?
-let celdasMovibles = new Set(); // "f,c" de posiciones alcanzables
+let seleccionado = false;            // ¿el jugador está seleccionado?
+let celdasMovibles = new Set();      // "f,c" de posiciones alcanzables
 
 const mapa = document.getElementById("mapa");
 const acciones = document.getElementById("acciones");
 const turnoLabel = document.getElementById("turno");
 const ficha = document.getElementById("ficha");
 
-// --- NUEVO: Ajuste responsivo del tamaño de las celdas ---
+// --- Ajuste responsivo del tamaño de las celdas ---
 function ajustarTamanoTablero() {
   const vw = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
   const vh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
@@ -81,7 +90,7 @@ function dibujarMapa() {
         celda.classList.add("seleccionada");
       }
 
-      // Inserción de minis
+      // Minis
       if (jugador.vivo && jugador.fila === f && jugador.col === c) {
         const pj = document.createElement("div");
         pj.className = "fichaMini jugador";
@@ -106,15 +115,23 @@ function refrescarUIAcciones() {
   if (enemigo.vivo && adyacentes(jugador, enemigo)) {
     const bAtacar = document.createElement("button");
     bAtacar.className = "primary";
-    bAtacar.textContent = "ATACAR";
+    bAtacar.textContent = `ATACAR (-${jugador.damage} HP)`;
     bAtacar.onclick = () => {
-      // Ataque del jugador: -50 HP
-      aplicarDanyo(enemigo, 50);
-      renderFicha(enemigo); // refresca barra
+      // Ataque del jugador con daño que escala por nivel
+      aplicarDanyo(enemigo, jugador.damage);
+      renderFicha(enemigo); // refresca barra del objetivo
+
       if (!enemigo.vivo) {
-        acciones.innerHTML = "<div id='mensaje'>¡Has vencido al enemigo!</div>";
-        setTurno("fin");
+        jugador.kills += 1;
+        const subio = comprobarSubidaNivel(jugador); // puede subir nivel (cada 3 kills)
         dibujarMapa();
+        if (subio) {
+          acciones.innerHTML = `<div id='mensaje'>¡${jugador.nombre} sube a <b>nivel ${jugador.nivel}</b>! (+10 HP máx, +10 daño)</div>`;
+          setTurno("jugador"); // te dejo el turno para que veas el mensaje
+        } else {
+          acciones.innerHTML = "<div id='mensaje'>¡Has vencido al enemigo!</div>";
+          setTurno("fin");
+        }
       } else {
         // pasa turno al enemigo
         seleccionado = false;
@@ -150,11 +167,17 @@ function renderFicha(unidad){
                (pct > 25) ? "linear-gradient(90deg, #f1c40f, #e67e22)" :
                             "linear-gradient(90deg, #e74c3c, #c0392b)";
 
+  // Si la unidad no tiene nivel/daño (enemigo), mostramos solo HP.
+  const extra = (unidad === jugador)
+    ? `<p class="meta">Nivel <b>${unidad.nivel}</b> · Daño <b>${unidad.damage}</b></p>`
+    : ``;
+
   ficha.innerHTML = `
     <div class="card">
       <div class="portrait" style="background-image:url('${unidad.retrato}')"></div>
       <div class="info">
         <p class="name">${unidad.nombre}</p>
+        ${extra}
         <div class="hp">
           <div class="bar"><span style="width:${pct}%; background:${grad}"></span></div>
           <div class="value">${unidad.hp}/${unidad.maxHp} HP</div>
@@ -172,9 +195,22 @@ function aplicarDanyo(objetivo, cantidad){
   }
 }
 
-// --- Lógica de selección/movimiento + clicks para mostrar ficha ---
+// --- Subida de nivel (cada 3 kills) ---
+function comprobarSubidaNivel(pj){
+  if (pj.kills > 0 && pj.kills % 3 === 0) {
+    pj.nivel += 1;
+    pj.maxHp += 10;
+    pj.hp = Math.min(pj.maxHp, pj.hp + 10); // cura 10 sin pasarse
+    pj.damage += 10;
+    renderFicha(pj);
+    return true;
+  }
+  return false;
+}
+
+// --- Lógica de selección/movimiento + clicks (ficha) ---
 function manejarClick(f,c){
-  // Mostrar ficha al clickar una unidad, siempre:
+  // Mostrar ficha al clickar una unidad
   if (jugador.vivo && f === jugador.fila && c === jugador.col) {
     renderFicha(jugador);
   } else if (enemigo.vivo && f === enemigo.fila && c === enemigo.col) {
@@ -183,7 +219,7 @@ function manejarClick(f,c){
 
   if (turno !== "jugador" || !jugador.vivo) return;
 
-  // Seleccionar/deseleccionar al jugador
+  // Selección inicial
   if (!seleccionado) {
     if (f === jugador.fila && c === jugador.col) {
       seleccionado = true;
@@ -193,6 +229,7 @@ function manejarClick(f,c){
     return;
   }
 
+  // Deseleccionar
   if (f === jugador.fila && c === jugador.col) {
     seleccionado = false;
     celdasMovibles.clear();
@@ -201,14 +238,13 @@ function manejarClick(f,c){
     return;
   }
 
-  // Mover si es una casilla válida y libre
+  // Mover si es válido y libre
   if (celdasMovibles.has(key(f,c)) && !(enemigo.vivo && enemigo.fila===f && enemigo.col===c)) {
     jugador.fila = f;
     jugador.col = c;
     seleccionado = false;
     celdasMovibles.clear();
     dibujarMapa();
-    // Tras moverte, ofrece ATACAR (si procede) o PASAR TURNO
     refrescarUIAcciones();
   }
 }
@@ -232,12 +268,10 @@ function turnoEnemigo(){
     return; 
   }
 
-  // Si ya está adyacente, ataca
   if (adyacentes(enemigo, jugador)) {
     return atacarEnemigo();
   }
 
-  // Mover hasta 'rangoEnemigo' pasos hacia el jugador
   for (let paso=0; paso<rangoEnemigo; paso++){
     const siguiente = pasoHacia(enemigo, jugador);
     if (!siguiente) break;
@@ -283,7 +317,7 @@ function pasoHacia(origen, objetivo){
 }
 
 function atacarEnemigo(){
-  aplicarDanyo(jugador, 50); // espadazo enemigo
+  aplicarDanyo(jugador, ENEMY_BASE_DAMAGE);
   renderFicha(jugador);
   dibujarMapa();
   if (!jugador.vivo) {
