@@ -1,16 +1,14 @@
-/* grid-bg-only build: bg-1 */
+/* build: bg2 */
 (function(){
   // --- Parámetros del tablero ---
   const filas = 8, columnas = 8;
   const rangoJugador = 3;
   const rangoEnemigo = 2;
   const ENEMY_BASE_DAMAGE = 50;
-  const STORAGE_KEY = "tactic-heroes-bg1";
+  const STORAGE_KEY = "tactic-heroes-bg2";
 
-  // --- SIN terrenos (todo pasable y coste 1) ---
+  // --- SIN terrenos: todo pasable y coste 1 ---
   const passable = () => true;
-
-  // (Si quieres mantener un editor de terrenos más tarde, aquí volveríamos a usar un tilemap)
 
   // --- Estado ---
   let turno = "jugador";
@@ -37,8 +35,8 @@
     hp: 80, maxHp: 80,
     retrato: "assets/archer.png",
     nivel: 1, kills: 0,
-    damage: 50,         // pediste 50
-    range: [2],         // solo a 2 casillas exactas
+    damage: 50,       // 50 de daño
+    range: [2],       // solo a 2 casillas exactas
     acted: false
   });
 
@@ -51,31 +49,27 @@
   const ficha = document.getElementById("ficha");
   const btnFinTurno = document.getElementById("btnFinTurno");
 
-  // --- Tamaño: el tablero ocupa lo máximo posible manteniendo cuadrado ---
+  // --- Tamaño: tablero ocupa lo máximo posible manteniendo cuadrado ---
   function ajustarTamanoTablero(){
     const vw = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
     const vh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
 
-    const ui = document.getElementById('ui');
-    const panel = document.getElementById('panel');
-    const uiH = ui?.getBoundingClientRect().height || 0;
-    const panelH = panel?.getBoundingClientRect().height || 0;
+    const uiH = document.getElementById('ui')?.getBoundingClientRect().height || 0;
+    const panelH = document.getElementById('panel')?.getBoundingClientRect().height || 0;
 
-    const disponibleAlto = Math.max(200, vh - uiH - panelH - 12); // 12px margen
+    const disponibleAlto  = Math.max(220, vh - uiH - panelH - 12);
     const disponibleAncho = vw - 12;
 
-    const ladoTablero = Math.min(disponibleAncho, disponibleAlto); // cuadrado máximo
-    const cell = Math.floor(ladoTablero / 8);
+    const lado = Math.floor(Math.min(disponibleAncho, disponibleAlto) / 8) * 8;
+    const cell = Math.max(40, Math.floor(lado / 8)); // mínimo 40px
     document.documentElement.style.setProperty('--cell', `${cell}px`);
-
-    // Ajusta el contenedor a exactamente 8*cell para evitar efecto rebote
-    mapa.style.width = `${cell * 8}px`;
+    mapa.style.width  = `${cell * 8}px`;
     mapa.style.height = `${cell * 8}px`;
   }
   window.addEventListener('resize', ajustarTamanoTablero);
   window.addEventListener('orientationchange', ajustarTamanoTablero);
 
-  // --- Guardado/Carga mínimos (posiciones/estadísticas) ---
+  // --- Guardado/Carga ---
   function saveProgress() {
     const data = {
       wave,
@@ -102,7 +96,7 @@
   document.getElementById("btnGuardar").onclick = saveProgress;
   document.getElementById("btnReset").onclick = () => { localStorage.removeItem(STORAGE_KEY); location.reload(); };
 
-  // --- Spawner de enemigos (HP y daño 50) ---
+  // --- Spawner de enemigos (HP/daño 50) ---
   function spawnWave(){
     enemies = [];
     const count = Math.min(2 + wave, 6);
@@ -124,7 +118,7 @@
     if (turno==="jugador") players.forEach(p=>p.acted=false);
   }
 
-  // --- Render del tablero (celdas invisibles) ---
+  // --- Render del tablero (celdas invisibles + sprites <img>) ---
   function dibujarMapa(){
     mapa.innerHTML = "";
     for (let f=0; f<8; f++){
@@ -134,18 +128,24 @@
         if (seleccionado && celdasMovibles.has(`${f},${c}`)) celda.classList.add("movible");
         if (seleccionado && seleccionado.fila===f && seleccionado.col===c) celda.classList.add("seleccionada");
 
+        // Jugadores
         players.forEach(p=>{
           if (p.vivo && p.fila===f && p.col===c){
-            const mini=document.createElement("div");
-            mini.className="fichaMini " + (p.tipo==="caballero"?"mini-caballero":"mini-arquera");
-            celda.appendChild(mini);
+            const img = document.createElement("img");
+            img.src = (p.tipo==="caballero") ? "assets/player.png" : "assets/archer.png";
+            img.alt = p.nombre;
+            img.className = "fichaMiniImg " + (p.tipo==="caballero" ? "mini-caballero" : "mini-arquera");
+            celda.appendChild(img);
           }
         });
+        // Enemigos
         enemies.forEach(e=>{
           if (e.vivo && e.fila===f && e.col===c){
-            const mini=document.createElement("div");
-            mini.className="fichaMini mini-enemigo";
-            celda.appendChild(mini);
+            const img = document.createElement("img");
+            img.src = "assets/enemy.png";
+            img.alt = e.nombre;
+            img.className = "fichaMiniImg mini-enemigo";
+            celda.appendChild(img);
           }
         });
 
@@ -158,7 +158,7 @@
   // --- Selección y acciones ---
   let seleccionado=null;
   let celdasMovibles=new Set();
-  const acciones = document.getElementById("acciones");
+
   function botonesAccionesPara(unidad){
     acciones.innerHTML="";
     if (turno!=="jugador" || !unidad?.vivo) return;
@@ -176,7 +176,7 @@
     });
   }
 
-  document.getElementById("btnFinTurno").onclick = ()=>{
+  btnFinTurno.onclick = ()=>{
     if (turno!=="jugador") return;
     players.forEach(p=>p.acted=true);
     seleccionado=null; celdasMovibles.clear(); acciones.innerHTML="";
@@ -186,12 +186,11 @@
 
   function setTurno(t){
     turno=t;
-    document.getElementById("turno").textContent = (t==="jugador"?"TU TURNO": t==="enemigo"?"TURNO ENEMIGO":"FIN DE PARTIDA");
+    turnoLabel.textContent = (t==="jugador"?"TU TURNO": t==="enemigo"?"TURNO ENEMIGO":"FIN DE PARTIDA");
   }
 
   // --- Ficha ---
   function renderFicha(u){
-    const ficha = document.getElementById("ficha");
     if(!u){ ficha.style.display="none"; ficha.innerHTML=""; return; }
     const pct = Math.max(0, Math.min(100, Math.round((u.hp/u.maxHp)*100)));
     const grad = (pct>50)?"linear-gradient(90deg,#2ecc71,#27ae60)":(pct>25)?"linear-gradient(90deg,#f1c40f,#e67e22)":"linear-gradient(90deg,#e74c3c,#c0392b)";
@@ -277,7 +276,7 @@
     const celda = mapa.children[idx]; if(!celda) return;
     const flash = (fuente==='enemy')?'flash-enemy':'flash-player';
     celda.classList.add(flash); setTimeout(()=>celda.classList.remove(flash),280);
-    const sprite = celda.firstElementChild;
+    const sprite = celda.querySelector('.fichaMiniImg');
     if (sprite){ sprite.classList.add('blink-hit'); setTimeout(()=>sprite.classList.remove('blink-hit'),1200); }
     const dmg=document.createElement('div');
     dmg.className='dmg-float ' + (fuente==='enemy'?'dmg-enemy':'dmg-player');
@@ -322,14 +321,12 @@
       if (mejor===1){
         aplicarDanyo(objetivo, en.damage, 'enemy');
       } else {
-        // moverse hacia el objetivo (pasos Manhattan simples, evitando choques)
+        // movimiento simple hacia el objetivo evitando choques
         const step = (a,b)=> a<b?1:(a>b?-1:0);
         let nf=en.fila, nc=en.col;
         for(let s=0;s<rangoEnemigo;s++){
           const df = step(nf, objetivo.fila), dc = step(nc, objetivo.col);
-          const cand = [
-            [nf+df, nc], [nf, nc+dc], // prioriza acercar en un eje
-          ];
+          const cand = [[nf+df, nc],[nf, nc+dc]];
           let moved=false;
           for(const [tf,tc] of cand){
             if(tf<0||tf>=8||tc<0||tc>=8) continue;
@@ -352,13 +349,16 @@
     renderFicha(players.find(p=>p.vivo) || null);
     dibujarMapa();
 
-    if (players.every(p=>!p.vivo)) { acciones.innerHTML="<div style='color:#ffcccc'>¡Has sido derrotado!</div>"; setTurno('fin'); }
-    else { setTurno('jugador'); acciones.innerHTML=""; }
+    if (players.every(p=>!p.vivo)) {
+      acciones.innerHTML="<div style='color:#ffcccc'>¡Has sido derrotado!</div>";
+      setTurno('fin');
+    } else {
+      setTurno('jugador');
+      acciones.innerHTML="";
+    }
   }
 
-  function setTurno(t){ turno=t; document.getElementById("turno").textContent = (t==="jugador"?"TU TURNO":t==="enemigo"?"TURNO ENEMIGO":"FIN DE PARTIDA"); }
-
-  // --- Init ---
+  // --- Inicio ---
   function init(){
     ajustarTamanoTablero();
     const had = loadProgress(); if(!had) saveProgress();
