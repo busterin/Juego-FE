@@ -25,6 +25,20 @@ body {
   color: #0b3d91;
 }
 
+#estado{
+  font-size: 14px;
+  color: #334;
+  background: #eef3ff;
+  border: 1px solid #cfe0ff;
+  padding: 6px 10px;
+  border-radius: 999px;
+}
+
+#toolbar{
+  display: flex;
+  gap: 8px;
+}
+
 #mapa {
   display: grid;
   grid-template-columns: repeat(8, var(--cell));
@@ -148,9 +162,9 @@ body {
 #acciones { min-height: 44px; }
 
 button {
-  padding: 12px 18px;
-  font-size: 18px;
-  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 16px;
+  border-radius: 10px;
   border: 1px solid #c9d2e3;
   background: white;
   cursor: pointer;
