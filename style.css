@@ -31,7 +31,7 @@ body {
   grid-template-columns: repeat(8, var(--cell));
   grid-template-rows: repeat(8, var(--cell));
   gap: var(--gap);
-  margin: 18px auto;
+  margin: 18px auto 10px auto;
   width: calc(8 * var(--cell) + 7 * var(--gap));
   user-select: none;
   touch-action: manipulation;
@@ -58,7 +58,7 @@ body {
 }
 
 /* --- Sprites como fondo PNG --- */
-.ficha {
+.fichaMini {
   width: 80%;
   height: 80%;
   background-size: contain;
@@ -76,8 +76,78 @@ body {
   background-color: transparent;
 }
 
+/* --- Panel inferior --- */
+#panel{
+  width: calc(8 * var(--cell) + 7 * var(--gap));
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#ficha {
+  display: none;              /* se muestra al clickar una unidad */
+  text-align: left;
+  background: #ffffff;
+  border: 1px solid #d9e0ee;
+  border-radius: 12px;
+  padding: 10px;
+  box-shadow: 0 4px 10px rgba(0,0,0,.06);
+}
+
+.card {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.card .portrait {
+  width: 84px;
+  height: 84px;
+  border-radius: 10px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border: 1px solid #d9e0ee;
+}
+
+.card .name {
+  font-weight: 800;
+  margin: 0 0 6px 0;
+}
+
+.hp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hp .bar {
+  position: relative;
+  flex: 1;
+  height: 14px;
+  background: #e9edf6;
+  border: 1px solid #ccd6ea;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.hp .bar > span {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #2ecc71, #27ae60); /* verde por defecto */
+  transition: width .25s ease;
+}
+
+.hp .value {
+  font-size: 12px;
+  min-width: 72px;
+  text-align: right;
+}
+
 #acciones {
-  margin-top: 12px;
   min-height: 44px;
 }
 
@@ -99,4 +169,10 @@ button.primary {
 #mensaje {
   font-weight: 700;
   color: #0f5132;
+}
+
+/* Responsivo */
+@media (max-width: 600px){
+  .card { grid-template-columns: 72px 1fr; }
+  .card .portrait { width: 72px; height: 72px; }
 }
