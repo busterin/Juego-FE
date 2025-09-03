@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <title>TACTIC HEROES</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="style.css?v=mp5">
+  <link rel="stylesheet" href="style.css?v=turnBanner1">
 </head>
 <body>
   <!-- Overlay NIVEL COMPLETADO -->
@@ -15,22 +15,18 @@
     </div>
   </div>
 
-  <div id="ui">
-    <div id="turno">TU TURNO</div>
-    <div id="toolbar">
-      <button id="btnGuardar" title="Guardar progreso">Guardar</button>
-      <button id="btnReset" title="Borrar progreso y reiniciar">Reiniciar</button>
-      <button id="btnFinTurno" class="secondary" title="Terminar el turno del jugador">Terminar turno</button>
-    </div>
-  </div>
+  <!-- Banner de turno superpuesto -->
+  <div id="turnBanner" class="turn-banner" style="display:none">TU TURNO</div>
 
+  <!-- Tablero -->
   <div id="mapa"></div>
 
+  <!-- Panel inferior -->
   <div id="panel">
     <div id="ficha"></div>
     <div id="acciones"></div>
   </div>
 
-  <script src="script.js?v=mp5"></script>
+  <script src="script.js?v=turnBanner1"></script>
 </body>
 </html>
