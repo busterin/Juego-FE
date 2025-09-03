@@ -50,22 +50,39 @@ body {
   touch-action: manipulation;
 }
 
+/* --- Terrenos (tilemap) --- */
 .celda {
   width: var(--cell);
   height: var(--cell);
-  background: #e6e9f0;
   border: 1px solid #cfd6e4;
   display: grid;
   place-items: center;
   cursor: pointer;
   position: relative;
+  overflow: hidden;
+}
+.celda.llanura {
+  background: linear-gradient(#a6d77e,#7fcf63);
+}
+.celda.bosque {
+  background:
+    radial-gradient(closest-side,#2f7b2f 60%,#1c551c 61%) 25% 25%/40% 40% no-repeat,
+    radial-gradient(closest-side,#2f7b2f 60%,#1c551c 61%) 75% 60%/45% 45% no-repeat,
+    linear-gradient(#3e8d3e,#2a6c2a);
+}
+.celda.agua {
+  background:
+    repeating-linear-gradient(135deg, #6fc3ff 0 6px, #7ad0ff 6px 12px);
+}
+.celda.montana {
+  background:
+    linear-gradient(#a09a8e,#7e786d);
 }
 
 .celda.movible {
   outline: 3px solid rgba(48, 140, 255, 0.55);
-  background: #eaf3ff;
+  box-shadow: inset 0 0 0 3px rgba(255,255,255,.25);
 }
-
 .celda.seleccionada {
   box-shadow: inset 0 0 0 3px #1b76ff;
 }
@@ -78,9 +95,32 @@ body {
   background-repeat: no-repeat;
   background-position: center bottom;
 }
-
 .jugador { background-image: url("assets/player.png"); }
 .enemigo  { background-image: url("assets/enemy.png"); }
+
+/* Leyenda */
+#leyenda{
+  width: calc(8 * var(--cell) + 7 * var(--gap));
+  margin: 0 auto 10px auto;
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  color: #334;
+  font-size: 13px;
+}
+#leyenda .t{
+  display: inline-block;
+  width: 18px; height: 18px;
+  border: 1px solid #cfd6e4;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+#leyenda .llanura{ background: linear-gradient(#a6d77e,#7fcf63); }
+#leyenda .bosque{ background: linear-gradient(#3e8d3e,#2a6c2a); }
+#leyenda .agua{ background: #7ad0ff; }
+#leyenda .montana{ background: #8b8376; }
 
 /* Panel inferior (ficha + acciones) */
 #panel{
