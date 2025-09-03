@@ -8,7 +8,7 @@ body {
   text-align: center;
   margin: 0;
   padding: 20px 10px;
-  background: #f7f7fb;
+  background: #0b3d15; /* verde bosque general */
 }
 
 #ui {
@@ -22,16 +22,7 @@ body {
 #turno {
   font-size: 22px;
   font-weight: 800;
-  color: #0b3d91;
-}
-
-#estado{
-  font-size: 14px;
-  color: #334;
-  background: #eef3ff;
-  border: 1px solid #cfe0ff;
-  padding: 6px 10px;
-  border-radius: 999px;
+  color: #fff;
 }
 
 #toolbar{
@@ -48,6 +39,7 @@ body {
   width: calc(8 * var(--cell) + 7 * var(--gap));
   user-select: none;
   touch-action: manipulation;
+  background: #145c2e; /* verde oscuro detrás de la cuadrícula */
 }
 
 /* --- Terrenos (tilemap con sprites escalados a la celda) --- */
@@ -61,11 +53,10 @@ body {
   position: relative;
   overflow: hidden;
 
-  background-size: 100% 100%;   /* ocupa toda la celda */
+  background-size: 100% 100%;
   background-position: center;
   background-repeat: no-repeat;
-
-  image-rendering: pixelated;   /* nítido en pixel art */
+  image-rendering: pixelated; /* nitidez pixel art */
 }
 
 .celda.llanura  { background-image: url("assets/grass.png"); }
@@ -75,7 +66,6 @@ body {
 
 .celda.movible {
   outline: 3px solid rgba(48, 140, 255, 0.55);
-  box-shadow: inset 0 0 0 3px rgba(255,255,255,.25);
 }
 .celda.seleccionada { box-shadow: inset 0 0 0 3px #1b76ff; }
 
@@ -91,31 +81,7 @@ body {
 .mini-arquera   { background-image: url("assets/archer.png"); }
 .mini-enemigo   { background-image: url("assets/enemy.png"); }
 
-/* --- Leyenda --- */
-#leyenda{
-  width: calc(8 * var(--cell) + 7 * var(--gap));
-  margin: 0 auto 10px auto;
-  display: flex;
-  justify-content: center;
-  gap: 14px;
-  align-items: center;
-  flex-wrap: wrap;
-  color: #334;
-  font-size: 13px;
-}
-#leyenda .t{
-  display: inline-block;
-  width: 18px; height: 18px;
-  border: 1px solid #cfd6e4;
-  vertical-align: middle;
-  margin-right: 6px;
-}
-#leyenda .llanura  { background: url("assets/grass.png") center/cover no-repeat; }
-#leyenda .bosque   { background: url("assets/forest.png") center/cover no-repeat; }
-#leyenda .agua     { background: url("assets/water.png") center/cover no-repeat; }
-#leyenda .montana  { background: url("assets/mountain.png") center/cover no-repeat; }
-
-/* --- Panel inferior (ficha + acciones) --- */
+/* --- Panel inferior --- */
 #panel{
   width: calc(8 * var(--cell) + 7 * var(--gap));
   margin: 0 auto;
