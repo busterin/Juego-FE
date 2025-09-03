@@ -1,15 +1,15 @@
-/* build: hud1 */
+/* build: hud2 */
 (function(){
   // --- Parámetros del tablero / HUD ---
   const filas = 8, columnas = 8;
-  const UI_ROWS = 1;            // 👈 Fila(s) inferiores reservadas al HUD (no jugables)
+  const NON_PLAYABLE_BOTTOM_ROWS = 2; // 👈 HUD + 1 fila extra no jugable
   const PLAYER_MAX_MP = 5;
   const ENEMY_MAX_MP  = 5;
   const ENEMY_BASE_DAMAGE = 50;
 
   // --- Estado ---
-  let turno = "jugador";  // 'jugador' | 'enemigo' | 'fin'
-  let fase = 1;           // 1: 3 enemigos, 2: 4 enemigos, 3: completado
+  let turno = "jugador";           // 'jugador' | 'enemigo' | 'fin'
+  let fase = 1;                    // 1: 3 enemigos, 2: 4 enemigos, 3: completado
   let enemies = [];
   let seleccionado = null;
   let celdasMovibles = new Set();
@@ -57,12 +57,11 @@
     const vw = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
     const vh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
 
-    // El HUD está dentro del mapa, así que solo ajustamos para que el mapa quepa en el viewport completo.
-    const disponibleAlto  = vh - 12;      // margen pequeño
+    const disponibleAlto  = vh - 12;
     const disponibleAncho = vw - 12;
 
     const lado = Math.floor(Math.min(disponibleAncho, disponibleAlto) / 8) * 8;
-    const cell = Math.max(36, Math.floor(lado / 8)); // mínimo 36px en pantallas muy pequeñas
+    const cell = Math.max(36, Math.floor(lado / 8));
     document.documentElement.style.setProperty('--cell', `${cell}px`);
     mapa.style.width  = `${cell * 8}px`;
     mapa.style.height = `${cell * 8}px`;
@@ -73,10 +72,10 @@
   // --- Utilidades ---
   const key = (f,c) => `${f},${c}`;
   const dentro = (f,c) => f>=0 && f<filas && c>=0 && c<columnas;
-  const enHud = (f) => f >= filas - UI_ROWS; // 👈 dentro de la franja HUD
+  const noJugable = (f) => f >= filas - NON_PLAYABLE_BOTTOM_ROWS; // 👈 2 filas inferiores
   const manhattan = (a,b) => Math.abs(a.fila-b.fila)+Math.abs(a.col-b.col);
 
-  // --- Spawns por fase (evita HUD) ---
+  // --- Spawns por fase (evita zona no jugable) ---
   function spawnFase(){
     enemies = [];
     const count = (fase === 1) ? 3 : (fase === 2) ? 4 : 0;
@@ -84,7 +83,7 @@
     const ocupadas = new Set(players.filter(p=>p.vivo).map(p=>key(p.fila,p.col)));
     for (let i=0; i<count; i++){
       let f,c;
-      do { f = Math.floor(Math.random()*(filas-UI_ROWS)); c = Math.floor(Math.random()*columnas); } // 👈 nunca en HUD
+      do { f = Math.floor(Math.random()*(filas - NON_PLAYABLE_BOTTOM_ROWS)); c = Math.floor(Math.random()*columnas); }
       while (ocupadas.has(key(f,c)));
       ocupadas.add(key(f,c));
       enemies.push({
@@ -107,7 +106,7 @@
       for (let c=0; c<columnas; c++){
         const celda = document.createElement("div");
         celda.className = "celda";
-        if (enHud(f)) celda.style.pointerEvents = "none"; // 👈 la franja HUD no recibe clicks del grid
+        if (noJugable(f)) celda.style.pointerEvents = "none"; // 👈 sin clicks en 2 filas inferiores
         if (seleccionado && celdasMovibles.has(key(f,c))) celda.classList.add("movible");
         if (seleccionado && seleccionado.fila===f && seleccionado.col===c) celda.classList.add("seleccionada");
 
@@ -139,10 +138,19 @@
   }
 
   // --- Panel y acciones (HUD) ---
+  function endTurn(){
+    players.forEach(p=>{ p.acted=true; p.mp=0; });
+    seleccionado=null; celdasMovibles.clear(); distSel=null;
+    acciones.innerHTML="";
+    setTurno("enemigo");
+    setTimeout(turnoIAEnemigos, 140);
+  }
+
   function botonesAccionesPara(unidad){
     acciones.innerHTML="";
     if (turno!=="jugador" || !unidad?.vivo) return;
 
+    // MP info
     const infoMp = document.createElement("div");
     infoMp.textContent = `MP: ${unidad.mp}/${PLAYER_MAX_MP}`;
     infoMp.style.marginRight = "6px";
@@ -157,6 +165,12 @@
       b.onclick=()=>atacarUnidadA(unidad,en);
       acciones.appendChild(b);
     });
+
+    // 👇 SIEMPRE: Terminar turno
+    const bTurn=document.createElement("button");
+    bTurn.textContent="Terminar turno";
+    bTurn.onclick=endTurn;
+    acciones.appendChild(bTurn);
   }
 
   // --- Ficha en HUD ---
@@ -172,7 +186,7 @@
           <p class="name">${u.nombre}</p>
           <p class="meta">${extra}</p>
           <div class="hp">
-            <div class="bar"><span style="width:${pct}%;"></span></div>
+            <div class="bar"><span style="width:${pct}%; background:${grad}"></span></div>
             <div class="value">${u.hp}/${u.maxHp} HP</div>
           </div>
         </div>
@@ -190,7 +204,7 @@
       const [f,c]=q.shift();
       for(const [df,dc] of dirs){
         const nf=f+df,nc=c+dc;
-        if(!dentro(nf,nc) || enHud(nf)) continue; // 👈 no expandir a zona HUD
+        if(!dentro(nf,nc) || noJugable(nf)) continue; // 👈 evita 2 filas inferiores
         const ocupado = enemies.some(e=>e.vivo&&e.fila===nf&&e.col===nc) ||
                         players.some(p=>p.vivo&&p!==u&&p.fila===nf&&p.col===nc);
         if(ocupado) continue;
@@ -198,7 +212,7 @@
         if(nd<=u.mp && nd<distSel[nf][nc]){ distSel[nf][nc]=nd; q.push([nf,nc]); }
       }
     }
-    for(let f=0;f<filas-UI_ROWS;f++) for(let c=0;c<columnas;c++){ // 👈 solo filas jugables
+    for(let f=0;f<filas-NON_PLAYABLE_BOTTOM_ROWS;f++) for(let c=0;c<columnas;c++){
       if(!(f===u.fila && c===u.col) && distSel[f][c]<=u.mp) celdasMovibles.add(`${f},${c}`);
     }
   }
@@ -213,8 +227,7 @@
   }
 
   function manejarClick(f,c){
-    // Ignora clics en zona HUD
-    if (enHud(f)) return;
+    if (noJugable(f)) return; // 👈 ignora clicks en 2 filas inferiores
 
     const pj = players.find(p=>p.vivo&&p.fila===f&&p.col===c);
     const en = enemies.find(e=>e.vivo&&e.fila===f&&e.col===c);
@@ -274,6 +287,7 @@
     if(obj.hp<=0){ obj.vivo=false; efectoMuerte(obj); }
   }
 
+  // --- Combate jugador ---
   function atacarUnidadA(u, objetivo){
     aplicarDanyo(objetivo, u.damage, 'player');
     renderFicha(objetivo);
@@ -308,7 +322,7 @@
   function comprobarCambioATurnoEnemigo(){
     if (players.every(p => !p.vivo || p.acted || p.mp===0)) {
       setTurno("enemigo");
-      setTimeout(turnoIAEnemigos, 130);
+      setTimeout(turnoIAEnemigos, 140);
     }
   }
 
@@ -331,7 +345,7 @@
         if (d < mejor){ mejor = d; objetivo = p; }
       }
 
-      // moverse hasta 5 pasos hacia objetivo evitando choques; no entrar en HUD
+      // moverse hasta 5 pasos hacia objetivo evitando choques; no entrar en zona no jugable
       const step = (a,b)=> a<b?1:(a>b?-1:0);
       while (en.mp > 0){
         if (manhattan(en, objetivo) === 1) break; // listo para pegar
@@ -340,7 +354,7 @@
         if (en.col  !== objetivo.col ) cand.push([en.fila, en.col + step(en.col,  objetivo.col )]);
         let moved = false;
         for (const [nf,nc] of cand){
-          if(!dentro(nf,nc) || enHud(nf)) continue; // 👈 evita HUD
+          if(!dentro(nf,nc) || noJugable(nf)) continue;
           const ocupado = enemies.some(o=>o!==en && o.vivo && o.fila===nf && o.col===nc) ||
                           players.some(p=>p.vivo && p.fila===nf && p.col===nc);
           if(!ocupado){ en.fila=nf; en.col=nc; en.mp--; moved=true; break; }
