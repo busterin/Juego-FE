@@ -10,10 +10,10 @@ html, body { height: 100%; }
 body {
   font-family: system-ui, Arial, sans-serif;
   margin: 0;
-  background: #000;   /* por si el fondo tarda */
+  background: #000;
   color: #fff;
-  height: 100vh;      /* exactamente la pantalla */
-  overflow: hidden;   /* sin scroll */
+  height: 100vh;         /* exactamente la pantalla */
+  overflow: hidden;      /* sin scroll */
   display: flex;
   flex-direction: column;
 }
@@ -60,11 +60,11 @@ body {
   flex: 1 1 auto;
   display: grid;
   grid-template-columns: repeat(8, var(--cell));
-  grid-template-rows: repeat(8, var(--cell));
+  grid-template-rows: repeat(8, var(--cell)); /* 8 filas de grid jugable+no jugable */
   gap: var(--gap);
   width: calc(8 * var(--cell));
   height: calc(8 * var(--cell));
-  margin: 0 auto;
+  margin: auto;
   user-select: none;
   touch-action: manipulation;
 
@@ -74,7 +74,22 @@ body {
   border: 2px solid rgba(255,255,255,.15);
   border-radius: 10px;
   box-shadow: 0 8px 20px rgba(0,0,0,.3);
-  position: relative;
+  position: relative; /* para posicionar el HUD dentro */
+}
+
+/* --- HUD inferior dentro del mapa (superpuesto) --- */
+#hud{
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: clamp(72px, calc(1.6 * var(--cell)), 160px);
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: linear-gradient(to top, rgba(0,0,0,.7), rgba(0,0,0,.35) 60%, rgba(0,0,0,0));
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  pointer-events: auto; /* interactuable */
 }
 
 /* --- Celdas invisibles: solo destacan al seleccionar/movibles --- */
@@ -85,14 +100,10 @@ body {
   place-items: center;
   cursor: pointer;
   position: relative;
+  z-index: 0;
 }
-.celda.movible {
-  outline: 3px solid rgba(48,140,255,0.55);
-  outline-offset: -1px;
-}
-.celda.seleccionada {
-  box-shadow: inset 0 0 0 3px #1b76ff;
-}
+.celda.movible { outline: 3px solid rgba(48,140,255,0.55); outline-offset: -1px; }
+.celda.seleccionada { box-shadow: inset 0 0 0 3px #1b76ff; }
 
 /* --- Sprites como <img> encima del fondo --- */
 .fichaMiniImg {
@@ -105,49 +116,35 @@ body {
   pointer-events: none;
 }
 
-/* --- Panel inferior: encaja al ancho del tablero (botones compactos) --- */
-#panel{
-  width: calc(8 * var(--cell));
-  margin: 6px auto 8px auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 0 4px;
-  flex: 0 0 auto;
-}
-
+/* --- Ficha y acciones (dentro del HUD) --- */
 #ficha {
   display: none;
   text-align: left;
-  background: #101418; /* enmarcada con el fondo */
+  background: rgba(16,20,24,.9);
   color: #ddd;
-  border: 1px solid rgba(255,255,255,.15);
-  border-radius: 12px;
-  padding: 8px;  /* más pequeño */
-  box-shadow: 0 6px 16px rgba(0,0,0,.35);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 10px;
+  padding: 6px 8px;
+  width: 100%;
 }
-
 .card {
   display: grid;
-  grid-template-columns: 60px 1fr; /* más compacta */
+  grid-template-columns: 52px 1fr;
   gap: 8px;
   align-items: center;
 }
 .card .portrait {
-  width: 60px;
-  height: 60px;
-  border-radius: 10px;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  width: 52px; height: 52px;
+  border-radius: 8px;
+  background-size: cover; background-position: center; background-repeat: no-repeat;
   border: 1px solid rgba(255,255,255,.12);
 }
-.card .name { font-weight: 800; margin: 0 0 6px 0; color:#fff; }
-.meta { margin: 0 0 6px 0; font-size: 12px; color: #c8d0df; }
+.card .name { font-weight: 800; margin: 0 0 4px 0; color:#fff; }
+.meta { margin: 0 0 4px 0; font-size: 12px; color: #c8d0df; }
 
-.hp { display: flex; align-items: center; gap: 8px; }
+.hp { display: flex; align-items: center; gap: 6px; }
 .hp .bar {
-  position: relative; flex: 1; height: 12px;
+  position: relative; flex: 1; height: 10px;
   background: #243042; border: 1px solid rgba(255,255,255,.12);
   border-radius: 999px; overflow: hidden;
 }
@@ -156,21 +153,15 @@ body {
   background: linear-gradient(90deg, #2ecc71, #27ae60);
   transition: width .25s ease;
 }
-.hp .value { font-size: 11px; min-width: 80px; text-align: right; color:#e6e9ef; }
+.hp .value { font-size: 11px; min-width: 76px; text-align: right; color:#e6e9ef; }
 
-#acciones { min-height: 40px; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
-
+#acciones { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 button {
-  padding: 8px 11px;        /* más pequeños */
-  font-size: 14px;
-  border-radius: 10px;
-  border: 1px solid #c9d2e3;
-  background: white;
-  color: #111;
-  cursor: pointer;
+  padding: 7px 10px; font-size: 13px;
+  border-radius: 10px; border: 1px solid #c9d2e3;
+  background: white; color: #111; cursor: pointer;
 }
 button.primary { background: #1b76ff; color: white; border-color: #1b76ff; }
-button.secondary { background: #f0f3fa; }
 
 /* --- FX de ataque y muerte --- */
 @keyframes flash-yellow { 0% { background-color: rgba(255,230,0,.75);} 100% {background-color: transparent;} }
@@ -194,9 +185,3 @@ button.secondary { background: #f0f3fa; }
 
 @keyframes death-pop { 0%{opacity:1; transform: scale(1);} 100%{opacity:0; transform: scale(1.15);} }
 .death-pop { animation: death-pop .35s ease-out forwards; }
-
-/* --- Responsive fino --- */
-@media (max-width: 600px){
-  .card { grid-template-columns: 52px 1fr; }
-  .card .portrait { width: 52px; height: 52px; }
-}
