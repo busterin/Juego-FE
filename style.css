@@ -1,10 +1,11 @@
 :root{
-  --cell: 64px;  /* recalculada por JS para ocupar lo máximo */
-  --gap: 0px;    /* cuadrícula invisible */
+  --cell: 40px;   /* recalculada por JS para ocupar lo máximo en 9:16 */
+  --gap: 0px;
+  --cols: 9;
+  --rows: 16;
 }
 
 * { box-sizing: border-box; }
-
 html, body { height: 100%; }
 
 body {
@@ -12,13 +13,13 @@ body {
   margin: 0;
   background: #000;
   color: #fff;
-  height: 100vh;         /* exactamente la pantalla */
-  overflow: hidden;      /* sin scroll */
+  height: 100vh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
-/* --- Overlay de victoria --- */
+/* Overlay de victoria */
 .overlay {
   position: fixed; inset: 0; z-index: 9999;
   display: grid; place-items: center;
@@ -36,12 +37,10 @@ body {
 }
 .overlay-box h1{ margin: 0 0 14px 0; }
 
-/* --- Banner de turno superpuesto --- */
+/* Banner de turno */
 .turn-banner{
   position: fixed;
-  left: 50%;
-  top: 10px;
-  transform: translateX(-50%);
+  left: 50%; top: 10px; transform: translateX(-50%);
   z-index: 8000;
   background: rgba(0,0,0,.6);
   border: 1px solid rgba(255,255,255,.25);
@@ -55,15 +54,15 @@ body {
   box-shadow: 0 6px 20px rgba(0,0,0,.35);
 }
 
-/* --- Tablero --- */
+/* Tablero 9x16, escalado exacto a 9:16 */
 #mapa {
   flex: 1 1 auto;
   display: grid;
-  grid-template-columns: repeat(8, var(--cell));
-  grid-template-rows: repeat(8, var(--cell));
+  grid-template-columns: repeat(var(--cols), var(--cell));
+  grid-template-rows:    repeat(var(--rows), var(--cell));
   gap: var(--gap);
-  width: calc(8 * var(--cell));
-  height: calc(8 * var(--cell));
+  width: calc(var(--cols) * var(--cell));
+  height: calc(var(--rows) * var(--cell));
   margin: auto;
   user-select: none;
   touch-action: manipulation;
@@ -74,68 +73,50 @@ body {
   border: 2px solid rgba(255,255,255,.15);
   border-radius: 10px;
   box-shadow: 0 8px 20px rgba(0,0,0,.3);
-  position: relative; /* para el HUD */
+  position: relative;
 }
 
-/* --- HUD inferior dentro del mapa --- */
+/* HUD inferior dentro del mapa */
 #hud{
-  position: absolute;
-  left: 0; right: 0; bottom: 0;
-  height: clamp(72px, calc(1.6 * var(--cell)), 160px);
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: clamp(78px, calc(2.0 * var(--cell)), 184px); /* un poco más alto en 16:9 */
   padding: 6px 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  background: linear-gradient(to top, rgba(0,0,0,.7), rgba(0,0,0,.35) 60%, rgba(0,0,0,0));
-  border-bottom-left-radius: 8px;
-  border-bottom-right-radius: 8px;
+  display: flex; flex-direction: column; gap: 6px;
+  background: linear-gradient(to top, rgba(0,0,0,.75), rgba(0,0,0,.35) 60%, rgba(0,0,0,0));
+  border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;
   pointer-events: auto;
 }
 
-/* --- Celdas invisibles, solo destacan al seleccionar/mover --- */
+/* Celdas */
 .celda {
-  width: var(--cell);
-  height: var(--cell);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  position: relative;
-  z-index: 0;
+  width: var(--cell); height: var(--cell);
+  display: grid; place-items: center;
+  cursor: pointer; position: relative; z-index: 0;
 }
-.celda.movible { outline: 3px solid rgba(48,140,255,0.55); outline-offset: -1px; }
-.celda.seleccionada { box-shadow: inset 0 0 0 3px #1b76ff; }
+.celda.movible     { outline: 3px solid rgba(48,140,255,0.55); outline-offset: -1px; }
+.celda.seleccionada{ box-shadow: inset 0 0 0 3px #1b76ff; }
 
-/* --- Sprites como <img> --- */
+/* Sprites */
 .fichaMiniImg {
-  width: 90%;
-  height: 90%;
-  object-fit: contain;
-  image-rendering: pixelated;
-  position: relative;
-  z-index: 1;
-  pointer-events: none;
+  width: 90%; height: 90%;
+  object-fit: contain; image-rendering: pixelated;
+  position: relative; z-index: 1; pointer-events: none;
 }
 
-/* --- Ficha y acciones --- */
+/* Ficha + acciones en HUD */
 #ficha {
-  display: none;
+  display: none; width: 100%;
   text-align: left;
   background: rgba(16,20,24,.9);
   color: #ddd;
   border: 1px solid rgba(255,255,255,.12);
-  border-radius: 10px;
-  padding: 6px 8px;
-  width: 100%;
+  border-radius: 10px; padding: 6px 8px;
 }
 .card {
-  display: grid;
-  grid-template-columns: 52px 1fr;
-  gap: 8px;
-  align-items: center;
+  display: grid; grid-template-columns: 52px 1fr; gap: 8px; align-items: center;
 }
 .card .portrait {
-  width: 52px; height: 52px;
-  border-radius: 8px;
+  width: 52px; height: 52px; border-radius: 8px;
   background-size: cover; background-position: center; background-repeat: no-repeat;
   border: 1px solid rgba(255,255,255,.12);
 }
@@ -163,7 +144,7 @@ button {
 }
 button.primary { background: #1b76ff; color: white; border-color: #1b76ff; }
 
-/* --- FX --- */
+/* FX */
 @keyframes flash-yellow { 0% { background-color: rgba(255,230,0,.75);} 100% {background-color: transparent;} }
 @keyframes flash-red    { 0% { background-color: rgba(255,60,60,.75);} 100% {background-color: transparent;} }
 .celda.flash-player { animation: flash-yellow .28s ease-out; }
