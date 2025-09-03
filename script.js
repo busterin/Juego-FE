@@ -1,7 +1,8 @@
-/* build: turnBanner1 */
+/* build: hud1 */
 (function(){
-  // --- Parámetros del tablero / combate ---
+  // --- Parámetros del tablero / HUD ---
   const filas = 8, columnas = 8;
+  const UI_ROWS = 1;            // 👈 Fila(s) inferiores reservadas al HUD (no jugables)
   const PLAYER_MAX_MP = 5;
   const ENEMY_MAX_MP  = 5;
   const ENEMY_BASE_DAMAGE = 50;
@@ -33,6 +34,7 @@
 
   // --- DOM ---
   const mapa = document.getElementById("mapa");
+  const hud = document.getElementById("hud");
   const acciones = document.getElementById("acciones");
   const ficha = document.getElementById("ficha");
   const overlayWin = document.getElementById("overlayWin");
@@ -45,14 +47,18 @@
     turnBanner.style.display = "block";
     setTimeout(()=>{ turnBanner.style.display = "none"; }, 1300);
   }
+  function setTurno(t){
+    turno = t;
+    showTurnBanner(t==="jugador" ? "TU TURNO" : t==="enemigo" ? "TURNO ENEMIGO" : "FIN DE PARTIDA");
+  }
 
   // --- Tamaño máximo del tablero (sin scroll) ---
   function ajustarTamanoTablero(){
     const vw = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
     const vh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
 
-    const panelH = document.getElementById('panel')?.getBoundingClientRect().height || 0;
-    const disponibleAlto  = Math.max(200, vh - panelH - 10);
+    // El HUD está dentro del mapa, así que solo ajustamos para que el mapa quepa en el viewport completo.
+    const disponibleAlto  = vh - 12;      // margen pequeño
     const disponibleAncho = vw - 12;
 
     const lado = Math.floor(Math.min(disponibleAncho, disponibleAlto) / 8) * 8;
@@ -60,9 +66,6 @@
     document.documentElement.style.setProperty('--cell', `${cell}px`);
     mapa.style.width  = `${cell * 8}px`;
     mapa.style.height = `${cell * 8}px`;
-
-    // Panel encaja exactamente al tablero
-    document.getElementById("panel").style.width = `${cell * 8}px`;
   }
   window.addEventListener('resize', ajustarTamanoTablero);
   window.addEventListener('orientationchange', ajustarTamanoTablero);
@@ -70,15 +73,10 @@
   // --- Utilidades ---
   const key = (f,c) => `${f},${c}`;
   const dentro = (f,c) => f>=0 && f<filas && c>=0 && c<columnas;
+  const enHud = (f) => f >= filas - UI_ROWS; // 👈 dentro de la franja HUD
   const manhattan = (a,b) => Math.abs(a.fila-b.fila)+Math.abs(a.col-b.col);
-  const enLineaRecta = (a,b) => (a.fila===b.fila) || (a.col===b.col);
 
-  function setTurno(t){
-    turno = t;
-    showTurnBanner(t==="jugador" ? "TU TURNO" : t==="enemigo" ? "TURNO ENEMIGO" : "FIN DE PARTIDA");
-  }
-
-  // --- Spawns por fase ---
+  // --- Spawns por fase (evita HUD) ---
   function spawnFase(){
     enemies = [];
     const count = (fase === 1) ? 3 : (fase === 2) ? 4 : 0;
@@ -86,7 +84,7 @@
     const ocupadas = new Set(players.filter(p=>p.vivo).map(p=>key(p.fila,p.col)));
     for (let i=0; i<count; i++){
       let f,c;
-      do { f = Math.floor(Math.random()*filas); c = Math.floor(Math.random()*columnas); }
+      do { f = Math.floor(Math.random()*(filas-UI_ROWS)); c = Math.floor(Math.random()*columnas); } // 👈 nunca en HUD
       while (ocupadas.has(key(f,c)));
       ocupadas.add(key(f,c));
       enemies.push({
@@ -99,17 +97,17 @@
         mp: ENEMY_MAX_MP
       });
     }
-    // Al empezar fase en turno del jugador, restaurar MPs si procede
     if (turno==="jugador") players.forEach(p=>{ p.acted=false; p.mp=PLAYER_MAX_MP; });
   }
 
   // --- Render del tablero ---
   function dibujarMapa(){
-    mapa.innerHTML = "";
-    for (let f=0; f<8; f++){
-      for (let c=0; c<8; c++){
+    mapa.querySelectorAll(".celda").forEach(n=>n.remove());
+    for (let f=0; f<filas; f++){
+      for (let c=0; c<columnas; c++){
         const celda = document.createElement("div");
         celda.className = "celda";
+        if (enHud(f)) celda.style.pointerEvents = "none"; // 👈 la franja HUD no recibe clicks del grid
         if (seleccionado && celdasMovibles.has(key(f,c))) celda.classList.add("movible");
         if (seleccionado && seleccionado.fila===f && seleccionado.col===c) celda.classList.add("seleccionada");
 
@@ -140,9 +138,8 @@
     }
   }
 
-  // --- Panel y acciones ---
+  // --- Panel y acciones (HUD) ---
   function botonesAccionesPara(unidad){
-    const acciones = document.getElementById("acciones");
     acciones.innerHTML="";
     if (turno!=="jugador" || !unidad?.vivo) return;
 
@@ -152,7 +149,7 @@
     infoMp.style.alignSelf = "center";
     acciones.appendChild(infoMp);
 
-    // Botones de ataque (compactos)
+    // Botones de ataque
     enemigosEnRango(unidad).forEach(en=>{
       const b=document.createElement("button");
       b.className="primary";
@@ -162,22 +159,20 @@
     });
   }
 
-  // --- Ficha inferior ---
+  // --- Ficha en HUD ---
   function renderFicha(u){
-    const ficha = document.getElementById("ficha");
     if(!u){ ficha.style.display="none"; ficha.innerHTML=""; return; }
     const pct = Math.max(0, Math.min(100, Math.round((u.hp/u.maxHp)*100)));
     const grad = (pct>50)?"linear-gradient(90deg,#2ecc71,#27ae60)":(pct>25)?"linear-gradient(90deg,#f1c40f,#e67e22)":"linear-gradient(90deg,#e74c3c,#c0392b)";
-    const esJ = players.includes(u);
-    const extra = esJ?`<p class="meta">Daño <b>${u.damage}</b> · KOs <b>${u.kills}</b> · MP <b>${u.mp}</b>/${PLAYER_MAX_MP}</p>`:"";
+    const extra = `· Daño <b>${u.damage}</b> · KOs <b>${u.kills}</b> · MP <b>${u.mp}</b>/${PLAYER_MAX_MP}`;
     ficha.innerHTML = `
       <div class="card">
         <div class="portrait" style="background-image:url('${u.retrato}')"></div>
         <div class="info">
           <p class="name">${u.nombre}</p>
-          ${extra}
+          <p class="meta">${extra}</p>
           <div class="hp">
-            <div class="bar"><span style="width:${pct}%; background:${grad}"></span></div>
+            <div class="bar"><span style="width:${pct}%;"></span></div>
             <div class="value">${u.hp}/${u.maxHp} HP</div>
           </div>
         </div>
@@ -185,17 +180,17 @@
     ficha.style.display="block";
   }
 
-  // --- Rango movimiento (BFS coste 1) con MP restante ---
+  // --- Selección / movimiento ---
   function calcularCeldasMovibles(u){
     celdasMovibles.clear();
-    distSel = Array.from({length:8},()=>Array(8).fill(Infinity));
+    distSel = Array.from({length:filas},()=>Array(columnas).fill(Infinity));
     const q=[]; distSel[u.fila][u.col]=0; q.push([u.fila,u.col]);
     const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
     while(q.length){
       const [f,c]=q.shift();
       for(const [df,dc] of dirs){
         const nf=f+df,nc=c+dc;
-        if(!dentro(nf,nc)) continue;
+        if(!dentro(nf,nc) || enHud(nf)) continue; // 👈 no expandir a zona HUD
         const ocupado = enemies.some(e=>e.vivo&&e.fila===nf&&e.col===nc) ||
                         players.some(p=>p.vivo&&p!==u&&p.fila===nf&&p.col===nc);
         if(ocupado) continue;
@@ -203,7 +198,7 @@
         if(nd<=u.mp && nd<distSel[nf][nc]){ distSel[nf][nc]=nd; q.push([nf,nc]); }
       }
     }
-    for(let f=0;f<8;f++) for(let c=0;c<8;c++){
+    for(let f=0;f<filas-UI_ROWS;f++) for(let c=0;c<columnas;c++){ // 👈 solo filas jugables
       if(!(f===u.fila && c===u.col) && distSel[f][c]<=u.mp) celdasMovibles.add(`${f},${c}`);
     }
   }
@@ -218,6 +213,9 @@
   }
 
   function manejarClick(f,c){
+    // Ignora clics en zona HUD
+    if (enHud(f)) return;
+
     const pj = players.find(p=>p.vivo&&p.fila===f&&p.col===c);
     const en = enemies.find(e=>e.vivo&&e.fila===f&&e.col===c);
     if(pj) renderFicha(pj); else if(en) renderFicha(en);
@@ -225,14 +223,14 @@
     if (turno!=="jugador") return;
 
     if (pj){
-      if (pj.acted){ seleccionado=null; celdasMovibles.clear(); distSel=null; dibujarMapa(); document.getElementById("acciones").innerHTML=""; return; }
+      if (pj.acted){ seleccionado=null; celdasMovibles.clear(); distSel=null; dibujarMapa(); acciones.innerHTML=""; return; }
       seleccionado=pj; if (seleccionado.mp>0) calcularCeldasMovibles(seleccionado); else { celdasMovibles.clear(); distSel=null; }
       dibujarMapa(); botonesAccionesPara(seleccionado); return;
     }
 
     if (seleccionado){
       if (f===seleccionado.fila && c===seleccionado.col){
-        seleccionado=null; celdasMovibles.clear(); distSel=null; dibujarMapa(); document.getElementById("acciones").innerHTML=""; return;
+        seleccionado=null; celdasMovibles.clear(); distSel=null; dibujarMapa(); acciones.innerHTML=""; return;
       }
       const esAlcanzable = celdasMovibles.has(`${f},${c}`);
       const ocupado = enemies.some(e=>e.vivo&&e.fila===f&&e.col===c) ||
@@ -251,7 +249,7 @@
 
   // --- FX de ataque / daño / muerte ---
   function efectoAtaque(objetivo, cantidad, fuente){
-    const idx = objetivo.fila * 8 + objetivo.col;
+    const idx = objetivo.fila * columnas + objetivo.col;
     const celda = mapa.children[idx]; if(!celda) return;
     const flash = (fuente==='enemy')?'flash-enemy':'flash-player';
     celda.classList.add(flash); setTimeout(()=>celda.classList.remove(flash),280);
@@ -265,12 +263,11 @@
     setTimeout(()=>dmg.remove(),650);
   }
   function efectoMuerte(unidad){
-    const idx = unidad.fila * 8 + unidad.col;
+    const idx = unidad.fila * columnas + unidad.col;
     const celda = mapa.children[idx]; if(!celda) return;
     const sprite = celda.querySelector('.fichaMiniImg');
     if (sprite){ sprite.classList.add('death-pop'); setTimeout(()=>{ if(sprite.parentNode) sprite.parentNode.removeChild(sprite); }, 360); }
   }
-
   function aplicarDanyo(obj,cant,fuente){
     obj.hp=Math.max(0,obj.hp-cant);
     efectoAtaque(obj,cant,fuente);
@@ -302,7 +299,7 @@
       // Tras atacar: acción consumida y MP a 0
       u.acted = true; u.mp = 0;
       seleccionado = null; celdasMovibles.clear(); distSel=null;
-      document.getElementById("acciones").innerHTML="";
+      acciones.innerHTML="";
       dibujarMapa();
       comprobarCambioATurnoEnemigo();
     }, 650);
@@ -334,7 +331,7 @@
         if (d < mejor){ mejor = d; objetivo = p; }
       }
 
-      // moverse hasta 5 pasos hacia objetivo evitando choques
+      // moverse hasta 5 pasos hacia objetivo evitando choques; no entrar en HUD
       const step = (a,b)=> a<b?1:(a>b?-1:0);
       while (en.mp > 0){
         if (manhattan(en, objetivo) === 1) break; // listo para pegar
@@ -343,7 +340,7 @@
         if (en.col  !== objetivo.col ) cand.push([en.fila, en.col + step(en.col,  objetivo.col )]);
         let moved = false;
         for (const [nf,nc] of cand){
-          if(!dentro(nf,nc)) continue;
+          if(!dentro(nf,nc) || enHud(nf)) continue; // 👈 evita HUD
           const ocupado = enemies.some(o=>o!==en && o.vivo && o.fila===nf && o.col===nc) ||
                           players.some(p=>p.vivo && p.fila===nf && p.col===nc);
           if(!ocupado){ en.fila=nf; en.col=nc; en.mp--; moved=true; break; }
@@ -365,7 +362,7 @@
       setTurno("fin");
     } else {
       setTurno("jugador");
-      // ¿oleada despejada por daño de IA?
+      // ¿oleada despejada por IA?
       if (enemies.every(e=>!e.vivo)) {
         if (fase === 1){ fase = 2; spawnFase(); dibujarMapa(); }
         else if (fase === 2){ fase = 3; overlayWin.style.display="grid"; }
@@ -378,7 +375,7 @@
     ajustarTamanoTablero();
     spawnFase();
     dibujarMapa();
-    setTurno("jugador"); // lanza banner
+    setTurno("jugador"); // banner
     renderFicha(null);
 
     btnContinuar.onclick = ()=>{ overlayWin.style.display="none"; location.reload(); };
