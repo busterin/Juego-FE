@@ -1,5 +1,5 @@
 :root{
-  --cell: 64px;  /* se recalcula desde JS para ocupar lo máximo */
+  --cell: 64px;  /* recalculada por JS para ocupar lo máximo */
   --gap: 0px;    /* cuadrícula invisible */
 }
 
@@ -12,7 +12,7 @@ body {
   margin: 0;
   background: #000;   /* por si el fondo tarda */
   color: #fff;
-  height: 100vh;      /* ocupa exactamente la pantalla */
+  height: 100vh;      /* exactamente la pantalla */
   overflow: hidden;   /* sin scroll */
   display: flex;
   flex-direction: column;
@@ -36,39 +36,24 @@ body {
 }
 .overlay-box h1{ margin: 0 0 14px 0; }
 
-#ui {
-  padding: 8px 10px;
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  align-items: center;
-  flex-wrap: wrap;
-  background: rgba(0,0,0,0.55);
-  flex: 0 0 auto;
-}
-
-#turno {
-  font-size: 20px;
+/* --- Banner de turno superpuesto --- */
+.turn-banner{
+  position: fixed;
+  left: 50%;
+  top: 10px;
+  transform: translateX(-50%);
+  z-index: 8000;
+  background: rgba(0,0,0,.6);
+  border: 1px solid rgba(255,255,255,.25);
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 12px;
   font-weight: 800;
-  letter-spacing: .2px;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  backdrop-filter: blur(3px);
+  box-shadow: 0 6px 20px rgba(0,0,0,.35);
 }
-
-#toolbar{
-  display: flex;
-  gap: 8px;
-}
-
-button {
-  padding: 10px 14px;
-  font-size: 16px;
-  border-radius: 10px;
-  border: 1px solid #c9d2e3;
-  background: white;
-  color: #111;
-  cursor: pointer;
-}
-button.primary { background: #1b76ff; color: white; border-color: #1b76ff; }
-button.secondary { background: #f0f3fa; }
 
 /* --- Tablero: ocupa lo máximo posible y mantiene cuadrado --- */
 #mapa {
@@ -120,13 +105,13 @@ button.secondary { background: #f0f3fa; }
   pointer-events: none;
 }
 
-/* --- Panel inferior: encaja al ancho del tablero --- */
+/* --- Panel inferior: encaja al ancho del tablero (botones compactos) --- */
 #panel{
-  width: calc(8 * var(--cell)); /* 👈 igual que el tablero */
-  margin: 8px auto 10px auto;
+  width: calc(8 * var(--cell));
+  margin: 6px auto 8px auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   padding: 0 4px;
   flex: 0 0 auto;
 }
@@ -138,19 +123,19 @@ button.secondary { background: #f0f3fa; }
   color: #ddd;
   border: 1px solid rgba(255,255,255,.15);
   border-radius: 12px;
-  padding: 10px;
+  padding: 8px;  /* más pequeño */
   box-shadow: 0 6px 16px rgba(0,0,0,.35);
 }
 
 .card {
   display: grid;
-  grid-template-columns: 72px 1fr;
-  gap: 10px;
+  grid-template-columns: 60px 1fr; /* más compacta */
+  gap: 8px;
   align-items: center;
 }
 .card .portrait {
-  width: 72px;
-  height: 72px;
+  width: 60px;
+  height: 60px;
   border-radius: 10px;
   background-size: cover;
   background-position: center;
@@ -158,28 +143,34 @@ button.secondary { background: #f0f3fa; }
   border: 1px solid rgba(255,255,255,.12);
 }
 .card .name { font-weight: 800; margin: 0 0 6px 0; color:#fff; }
-.meta { margin: 0 0 6px 0; font-size: 13px; color: #c8d0df; }
+.meta { margin: 0 0 6px 0; font-size: 12px; color: #c8d0df; }
 
 .hp { display: flex; align-items: center; gap: 8px; }
 .hp .bar {
-  position: relative;
-  flex: 1;
-  height: 14px;
-  background: #243042;
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: 999px;
-  overflow: hidden;
+  position: relative; flex: 1; height: 12px;
+  background: #243042; border: 1px solid rgba(255,255,255,.12);
+  border-radius: 999px; overflow: hidden;
 }
 .hp .bar > span {
-  display: block;
-  height: 100%;
-  width: 0%;
+  display: block; height: 100%; width: 0%;
   background: linear-gradient(90deg, #2ecc71, #27ae60);
   transition: width .25s ease;
 }
-.hp .value { font-size: 12px; min-width: 90px; text-align: right; color:#e6e9ef; }
+.hp .value { font-size: 11px; min-width: 80px; text-align: right; color:#e6e9ef; }
 
-#acciones { min-height: 44px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+#acciones { min-height: 40px; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+
+button {
+  padding: 8px 11px;        /* más pequeños */
+  font-size: 14px;
+  border-radius: 10px;
+  border: 1px solid #c9d2e3;
+  background: white;
+  color: #111;
+  cursor: pointer;
+}
+button.primary { background: #1b76ff; color: white; border-color: #1b76ff; }
+button.secondary { background: #f0f3fa; }
 
 /* --- FX de ataque y muerte --- */
 @keyframes flash-yellow { 0% { background-color: rgba(255,230,0,.75);} 100% {background-color: transparent;} }
@@ -194,7 +185,7 @@ button.secondary { background: #f0f3fa; }
 100%{ transform:translate(-50%,-42px) scale(1.05); opacity:0; } }
 .dmg-float {
   position: absolute; left: 50%; top: 8px; transform: translateX(-50%);
-  font-weight: 900; font-size: 16px; padding: 2px 6px; border-radius: 6px;
+  font-weight: 900; font-size: 15px; padding: 2px 6px; border-radius: 6px;
   color:#111; background:#fff; border:1px solid rgba(0,0,0,.1);
   box-shadow: 0 2px 6px rgba(0,0,0,.15); animation: dmg-pop .6s ease-out forwards;
 }
@@ -204,8 +195,8 @@ button.secondary { background: #f0f3fa; }
 @keyframes death-pop { 0%{opacity:1; transform: scale(1);} 100%{opacity:0; transform: scale(1.15);} }
 .death-pop { animation: death-pop .35s ease-out forwards; }
 
-/* --- Responsive --- */
+/* --- Responsive fino --- */
 @media (max-width: 600px){
-  .card { grid-template-columns: 60px 1fr; }
-  .card .portrait { width: 60px; height: 60px; }
+  .card { grid-template-columns: 52px 1fr; }
+  .card .portrait { width: 52px; height: 52px; }
 }
