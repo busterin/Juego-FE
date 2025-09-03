@@ -55,12 +55,12 @@ body {
   box-shadow: 0 6px 20px rgba(0,0,0,.35);
 }
 
-/* --- Tablero: ocupa lo máximo posible y mantiene cuadrado --- */
+/* --- Tablero --- */
 #mapa {
   flex: 1 1 auto;
   display: grid;
   grid-template-columns: repeat(8, var(--cell));
-  grid-template-rows: repeat(8, var(--cell)); /* 8 filas de grid jugable+no jugable */
+  grid-template-rows: repeat(8, var(--cell));
   gap: var(--gap);
   width: calc(8 * var(--cell));
   height: calc(8 * var(--cell));
@@ -74,10 +74,10 @@ body {
   border: 2px solid rgba(255,255,255,.15);
   border-radius: 10px;
   box-shadow: 0 8px 20px rgba(0,0,0,.3);
-  position: relative; /* para posicionar el HUD dentro */
+  position: relative; /* para el HUD */
 }
 
-/* --- HUD inferior dentro del mapa (superpuesto) --- */
+/* --- HUD inferior dentro del mapa --- */
 #hud{
   position: absolute;
   left: 0; right: 0; bottom: 0;
@@ -89,10 +89,10 @@ body {
   background: linear-gradient(to top, rgba(0,0,0,.7), rgba(0,0,0,.35) 60%, rgba(0,0,0,0));
   border-bottom-left-radius: 8px;
   border-bottom-right-radius: 8px;
-  pointer-events: auto; /* interactuable */
+  pointer-events: auto;
 }
 
-/* --- Celdas invisibles: solo destacan al seleccionar/movibles --- */
+/* --- Celdas invisibles, solo destacan al seleccionar/mover --- */
 .celda {
   width: var(--cell);
   height: var(--cell);
@@ -105,7 +105,7 @@ body {
 .celda.movible { outline: 3px solid rgba(48,140,255,0.55); outline-offset: -1px; }
 .celda.seleccionada { box-shadow: inset 0 0 0 3px #1b76ff; }
 
-/* --- Sprites como <img> encima del fondo --- */
+/* --- Sprites como <img> --- */
 .fichaMiniImg {
   width: 90%;
   height: 90%;
@@ -116,7 +116,7 @@ body {
   pointer-events: none;
 }
 
-/* --- Ficha y acciones (dentro del HUD) --- */
+/* --- Ficha y acciones --- */
 #ficha {
   display: none;
   text-align: left;
@@ -163,7 +163,7 @@ button {
 }
 button.primary { background: #1b76ff; color: white; border-color: #1b76ff; }
 
-/* --- FX de ataque y muerte --- */
+/* --- FX --- */
 @keyframes flash-yellow { 0% { background-color: rgba(255,230,0,.75);} 100% {background-color: transparent;} }
 @keyframes flash-red    { 0% { background-color: rgba(255,60,60,.75);} 100% {background-color: transparent;} }
 .celda.flash-player { animation: flash-yellow .28s ease-out; }
