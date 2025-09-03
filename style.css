@@ -1,6 +1,6 @@
 :root{
-  --cell: 64px;             /* la recalcula JS para ocupar lo máximo */
-  --gap: 0px;               /* cuadrícula sin líneas */
+  --cell: 64px;  /* se recalcula desde JS para ocupar lo máximo */
+  --gap: 0px;    /* cuadrícula sin líneas */
 }
 
 * { box-sizing: border-box; }
@@ -8,7 +8,7 @@
 body {
   font-family: system-ui, Arial, sans-serif;
   margin: 0;
-  background: #000;         /* negro por si el fondo tarda */
+  background: #000;   /* por si el fondo tarda */
   color: #fff;
   min-height: 100vh;
   display: flex;
@@ -28,6 +28,7 @@ body {
 #turno {
   font-size: 20px;
   font-weight: 800;
+  letter-spacing: .2px;
 }
 
 #toolbar{
@@ -78,7 +79,6 @@ button.secondary { background: #f0f3fa; }
   place-items: center;
   cursor: pointer;
   position: relative;
-  /* Sin fondo, sin bordes: la cuadrícula no se ve */
 }
 .celda.movible {
   outline: 3px solid rgba(48,140,255,0.55);
@@ -88,18 +88,19 @@ button.secondary { background: #f0f3fa; }
   box-shadow: inset 0 0 0 3px #1b76ff;
 }
 
-/* --- Sprites de unidades --- */
-.fichaMini {
+/* --- Sprites como <img> encima del fondo --- */
+.fichaMiniImg {
   width: 90%;
   height: 90%;
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center bottom;
+  object-fit: contain;
   image-rendering: pixelated;
+  position: relative;
+  z-index: 1;           /* asegura que va por encima del fondo */
+  pointer-events: none; /* los clics llegan a la celda */
 }
-.mini-caballero { background-image: url("assets/player.png"); }
-.mini-arquera   { background-image: url("assets/archer.png"); }
-.mini-enemigo   { background-image: url("assets/enemy.png"); }
+.mini-caballero {}
+.mini-arquera   {}
+.mini-enemigo   {}
 
 /* --- Panel inferior --- */
 #panel{
@@ -168,7 +169,7 @@ button.secondary { background: #f0f3fa; }
 .celda.flash-enemy  { animation: flash-red    .28s ease-out; }
 
 @keyframes blink-hit { 0%,100%{opacity:1;} 50%{opacity:.12;} }
-.fichaMini.blink-hit { animation: blink-hit .6s linear 2; }
+.fichaMiniImg.blink-hit { animation: blink-hit .6s linear 2; }
 
 @keyframes dmg-pop { 0%{ transform:translate(-50%,-10px) scale(1); opacity:1;}
 100%{ transform:translate(-50%,-42px) scale(1.05); opacity:0; } }
@@ -181,7 +182,7 @@ button.secondary { background: #f0f3fa; }
 .dmg-player { border-color: rgba(255,200,0,.6); }
 .dmg-enemy  { border-color: rgba(255,80,80,.6); }
 
-/* --- Responsive: el panel y retratos algo más pequeños en móviles --- */
+/* --- Responsive --- */
 @media (max-width: 600px){
   .card { grid-template-columns: 72px 1fr; }
   .card .portrait { width: 72px; height: 72px; }
