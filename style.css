@@ -6,11 +6,11 @@
   --cols: 9;
   --rows: 16;
 
-  /* Filas no jugables (expuestas por JS) */
-  --npRows: 2;
+  /* Filas no jugables (debe coincidir con JS) */
+  --npRows: 4;
 
-  /* Altura del HUD en "filas" (≤ npRows). Sube/baja a tu gusto. */
-  --hudRows: 1.2;
+  /* Altura del HUD en "filas" (≤ npRows). Ajusta para subir/bajar la UI. */
+  --hudRows: 1.6;
 }
 
 * { box-sizing: border-box; }
@@ -19,9 +19,8 @@ html, body { height: 100%; }
 body {
   font-family: system-ui, Arial, sans-serif;
   margin: 0;
-  /* Mejor manejo en móviles: */
-  height: 100dvh;                  /* soportado en navegadores modernos */
-  min-height: -webkit-fill-available; /* iOS fallback */
+  height: 100dvh;
+  min-height: -webkit-fill-available;
   background: #000;
   color: #fff;
   overflow: hidden;
@@ -92,7 +91,7 @@ body {
 #hud{
   position: absolute;
   left: 0; right: 0;
-  /* Comienza a --hudRows filas desde el final → más arriba dentro del área no jugable */
+  /* Comienza a --hudRows filas desde el final → bien arriba dentro del área no jugable */
   top: calc(var(--cell) * (var(--rows) - var(--hudRows)));
   height: calc(var(--cell) * var(--hudRows));
   padding: 6px 8px;
@@ -100,8 +99,7 @@ body {
   flex-direction: column;
   gap: 6px;
 
-  /* Nada de fondo ni gradientes: la ilustración se ve normal */
-  background: transparent;
+  background: transparent; /* sin marca ni gradiente */
   pointer-events: auto;
 }
 
@@ -125,7 +123,7 @@ body {
 #ficha {
   display: none; width: 100%;
   text-align: left;
-  background: rgba(16,20,24,.88);   /* tarjeta legible, sin cubrir fuera del HUD */
+  background: rgba(16,20,24,.88);
   color: #ddd;
   border: 1px solid rgba(255,255,255,.12);
   border-radius: 10px; padding: 6px 8px;
