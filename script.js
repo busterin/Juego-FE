@@ -1,4 +1,4 @@
-/* build: grid9x16-hudUp */
+/* build: cleanHud */
 (function(){
   // --- Dimensiones del tablero 9:16 ---
   const ROWS = 16, COLS = 9;     // formato móvil 9:16
@@ -55,11 +55,23 @@
     showTurnBanner(t==="jugador" ? "TU TURNO" : t==="enemigo" ? "TURNO ENEMIGO" : "FIN DE PARTIDA");
   }
 
-  // Tamaño exacto 9:16 sin scroll
+  // Tamaño exacto 9:16 sin scroll (robusto en móviles)
+  function getUsableViewport(){
+    // Usa innerWidth/innerHeight (mejor en móviles que vh) y quita safe areas
+    const w = Math.max(window.innerWidth || 0, document.documentElement.clientWidth || 0);
+    const h = Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0);
+    // Safe areas (si existen)
+    const style = getComputedStyle(document.documentElement);
+    const insetTop = parseInt(style.getPropertyValue('env(safe-area-inset-top)')) || 0;
+    const insetBottom = parseInt(style.getPropertyValue('env(safe-area-inset-bottom)')) || 0;
+    return { w, h: h - insetTop - insetBottom };
+  }
+
   function ajustarTamanoTablero(){
-    const vw = Math.max(document.documentElement.clientWidth,  window.innerWidth  || 0);
-    const vh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
-    const cell = Math.max(32, Math.floor(Math.min((vw-12)/COLS, (vh-12)/ROWS)));
+    const { w:vw, h:vh } = getUsableViewport();
+    // margen mínimo para bordes/sombras
+    const pad = 12;
+    const cell = Math.max(28, Math.floor(Math.min((vw - pad)/COLS, (vh - pad)/ROWS)));
 
     document.documentElement.style.setProperty('--cell', `${cell}px`);
     document.documentElement.style.setProperty('--cols', COLS);
@@ -69,8 +81,11 @@
     mapa.style.width  = `${cell * COLS}px`;
     mapa.style.height = `${cell * ROWS}px`;
   }
+
   window.addEventListener('resize', ajustarTamanoTablero);
   window.addEventListener('orientationchange', ajustarTamanoTablero);
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) ajustarTamanoTablero(); });
+  new ResizeObserver(()=>ajustarTamanoTablero()).observe(document.body);
 
   // Utilidades
   const key = (f,c) => `${f},${c}`;
@@ -229,7 +244,7 @@
   function enemigosEnRango(u){
     return enemies.filter(e=>{
       if(!e.vivo) return false;
-      if(!enLineaRecta(u,e)) return false;
+      if(!(u.fila===e.fila || u.col===e.col)) return false; // línea recta
       const d = Math.abs(u.fila-e.fila)+Math.abs(u.col-e.col);
       return u.range.includes(d);
     });
