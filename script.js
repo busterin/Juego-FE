@@ -1,8 +1,8 @@
-/* build: np4 */
+/* build: portada-final */
 (function(){
   // --- Dimensiones del tablero 9:16 ---
   const ROWS = 16, COLS = 9;     // formato móvil 9:16
-  const NON_PLAYABLE_BOTTOM_ROWS = 4; // 👈 HUD + 3 extras no jugables
+  const NON_PLAYABLE_BOTTOM_ROWS = 4; // HUD + 3 extras no jugables
 
   // Parámetros de juego
   const PLAYER_MAX_MP = 5;
@@ -59,7 +59,6 @@
   function getUsableViewport(){
     const w = Math.max(window.innerWidth || 0, document.documentElement.clientWidth || 0);
     const h = Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0);
-    // Safe areas (si existen)
     const style = getComputedStyle(document.documentElement);
     const insetTop = parseInt(style.getPropertyValue('env(safe-area-inset-top)')) || 0;
     const insetBottom = parseInt(style.getPropertyValue('env(safe-area-inset-bottom)')) || 0;
@@ -74,7 +73,7 @@
     document.documentElement.style.setProperty('--cell', `${cell}px`);
     document.documentElement.style.setProperty('--cols', COLS);
     document.documentElement.style.setProperty('--rows', ROWS);
-    document.documentElement.style.setProperty('--npRows', NON_PLAYABLE_BOTTOM_ROWS); // expone filas no jugables
+    document.documentElement.style.setProperty('--npRows', NON_PLAYABLE_BOTTOM_ROWS);
 
     mapa.style.width  = `${cell * COLS}px`;
     mapa.style.height = `${cell * ROWS}px`;
@@ -92,10 +91,7 @@
   const manhattan = (a,b) => Math.abs(a.fila-b.fila)+Math.abs(a.col-b.col);
   const enLineaRecta = (a,b) => (a.fila===b.fila) || (a.col===b.col);
 
-  // Buscar celda por data-key (robusto aunque haya HUD dentro de #mapa)
-  function getCelda(f,c){
-    return mapa.querySelector(`.celda[data-key="${f},${c}"]`);
-  }
+  function getCelda(f,c){ return mapa.querySelector(`.celda[data-key="${f},${c}"]`); }
 
   // Oleadas (evitando zona no jugable)
   function spawnFase(){
@@ -179,16 +175,14 @@
     infoMp.style.alignSelf = "center";
     acciones.appendChild(infoMp);
 
-    // Botones de ataque (sin mostrar el daño para ahorrar espacio)
     enemigosEnRango(unidad).forEach(en=>{
       const b=document.createElement("button");
       b.className="primary";
-      b.textContent=`ATACAR ${en.nombre}`;    // sin “-50”
+      b.textContent=`ATACAR ${en.nombre}`;   // sin “-50”
       b.onclick=()=>atacarUnidadA(unidad,en);
       acciones.appendChild(b);
     });
 
-    // Más corto para ahorrar espacio
     const bTurn=document.createElement("button");
     bTurn.textContent="Pasar turno";
     bTurn.onclick=endTurn;
@@ -409,15 +403,24 @@
     }
   }
 
-  // Inicio
+  // Inicio + Portada
   function init(){
     players = [ makeKnight(), makeArcher() ];
     ajustarTamanoTablero();
     spawnFase();
     dibujarMapa();
-    setTurno("jugador");
     renderFicha(null);
+
     btnContinuar.onclick = ()=>{ overlayWin.style.display="none"; location.reload(); };
+
+    // Portada
+    const btnJugar = document.getElementById("btnJugar");
+    const portada = document.getElementById("portada");
+    btnJugar.onclick = ()=>{
+      portada.style.display="none";
+      document.getElementById("mapa").style.display="grid";
+      setTurno("jugador");
+    };
   }
   init();
 })();
