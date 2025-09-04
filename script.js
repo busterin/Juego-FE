@@ -18,6 +18,15 @@
   let celdasMovibles = new Set();
   let distSel = null;
 
+  // ---------- Diálogos intro ----------
+  const dialogLines = [
+    { who:'knight', name:'Caballero', text:'Os doy la bienvenida a Tactic Heroes. Nuestro objetivo es derrotar al ejército rival.' },
+    { who:'archer', name:'Arquera',   text:'Seleccionar un personaje para ver su rango de movimiento y después elegir dónde colocarlo.' },
+    { who:'knight', name:'Caballero', text:'El caballero ataca si está adyacente al enemigo y la arquera a una casilla de distancia.' },
+    { who:'archer', name:'Arquera',   text:'Todo listo. ¡Entremos en combate!' }
+  ];
+  let dlgIndex = 0, typing=false, typeTimer=null, speakPopTimer=null;
+
   // Unidades del jugador
   const makeKnight = () => ({
     id: "K", tipo: "caballero",
@@ -77,25 +86,19 @@
   }
   window.addEventListener('resize', ajustarTamanoTablero);
   window.addEventListener('orientationchange', ajustarTamanoTablero);
-  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) ajustarTamanoTablero(); });
   new ResizeObserver(()=>ajustarTamanoTablero()).observe(document.body);
 
   // ---------- Bloqueo vertical ----------
-  function isLandscape(){ const { innerWidth:w, innerHeight:h } = window; return w > h; }
+  function isLandscape(){ return window.innerWidth > window.innerHeight; }
   function applyOrientationLock(){
     const blocker = document.getElementById("orientationBlocker");
-    const mapaEl = document.getElementById("mapa");
-    const portada = document.getElementById("portada");
-    const dialog = document.getElementById("dialogScene");
     const enHorizontal = isLandscape();
     blocker.style.display = enHorizontal ? "grid" : "none";
-    const dim = (el) => { if(!el) return; el.style.pointerEvents = enHorizontal ? "none" : "auto"; el.style.filter = enHorizontal ? "grayscale(1) blur(1.5px) brightness(.7)" : "none"; };
-    dim(mapaEl); dim(portada); dim(dialog);
   }
   function setupOrientationLock(){
     applyOrientationLock();
-    window.addEventListener("resize", applyOrientationLock, { passive:true });
-    window.addEventListener("orientationchange", ()=> setTimeout(applyOrientationLock, 100));
+    window.addEventListener("resize", applyOrientationLock);
+    window.addEventListener("orientationchange", ()=> setTimeout(applyOrientationLock,100));
   }
 
   // ---------- Utils ----------
@@ -184,8 +187,6 @@
 
     const infoMp = document.createElement("div");
     infoMp.textContent = `MP: ${unidad.mp}/${PLAYER_MAX_MP}`;
-    infoMp.style.marginRight = "6px";
-    infoMp.style.alignSelf = "center";
     acciones.appendChild(infoMp);
 
     enemigosEnRango(unidad).forEach(en=>{
@@ -206,16 +207,13 @@
   function renderFicha(u){
     if(!u){ ficha.style.display="none"; ficha.innerHTML=""; return; }
     const pct = Math.max(0, Math.min(100, Math.round((u.hp/u.maxHp)*100)));
-    const grad = (pct>50)?"linear-gradient(90deg,#2ecc71,#27ae60)":(pct>25)?"linear-gradient(90deg,#f1c40f,#e67e22)":"linear-gradient(90deg,#e74c3c,#c0392b)";
-    const extra = `· Daño <b>${u.damage}</b> · KOs <b>${u.kills}</b> · MP <b>${u.mp}</b>/${PLAYER_MAX_MP}`;
     ficha.innerHTML = `
       <div class="card">
         <div class="portrait" style="background-image:url('${u.retrato}')"></div>
         <div class="info">
           <p class="name">${u.nombre}</p>
-          <p class="meta">${extra}</p>
           <div class="hp">
-            <div class="bar"><span style="width:${pct}%; background:${grad}"></span></div>
+            <div class="bar"><span style="width:${pct}%"></span></div>
             <div class="value">${u.hp}/${u.maxHp} HP</div>
           </div>
         </div>
@@ -266,244 +264,57 @@
 
     if (pj){
       if (pj.acted){ seleccionado=null; celdasMovibles.clear(); distSel=null; dibujarMapa(); acciones.innerHTML=""; return; }
-      seleccionado=pj; if (seleccionado.mp>0) calcularCeldasMovibles(seleccionado); else { celdasMovibles.clear(); distSel=null; }
+      seleccionado=pj; calcularCeldasMovibles(seleccionado);
       dibujarMapa(); botonesAccionesPara(seleccionado); return;
     }
 
     if (seleccionado){
-      if (f===seleccionado.fila && c===seleccionado.col){
-        seleccionado=null; celdasMovibles.clear(); distSel=null; dibujarMapa(); acciones.innerHTML=""; return;
-      }
-      const esAlcanzable = celdasMovibles.has(`${f},${c}`);
-      const ocupado = enemies.some(e=>e.vivo&&e.fila===f&&e.col===c) ||
-                      players.some(p=>p.vivo&&p!==seleccionado&&p.fila===f&&p.col===c);
-      if (esAlcanzable && !ocupado){
-        const coste = distSel[f][c] || 0;
-        seleccionado.fila=f; seleccionado.col=c;
-        seleccionado.mp = Math.max(0, seleccionado.mp - coste);
-        renderFicha(seleccionado);
-        if (seleccionado.mp>0){ calcularCeldasMovibles(seleccionado); }
-        else { celdasMovibles.clear(); distSel=null; }
+      if (celdasMovibles.has(`${f},${c}`)){
+        seleccionado.fila=f; seleccionado.col=c; seleccionado.mp=0;
         dibujarMapa(); botonesAccionesPara(seleccionado);
-      } else {
-        botonesAccionesPara(seleccionado);
       }
     }
   }
 
   // ---------- FX ----------
-  function efectoAtaque(objetivo, cantidad, fuente){
-    const celda = getCelda(objetivo.fila, objetivo.col);
-    if(!celda) return;
-    const flash = (fuente==='enemy')?'flash-enemy':'flash-player';
-    celda.classList.add(flash); setTimeout(()=>celda.classList.remove(flash),280);
-    const sprite = celda.querySelector('.fichaMiniImg');
-    if (sprite){ sprite.classList.add('blink-hit'); setTimeout(()=>sprite.classList.remove('blink-hit'),600); }
-    const dmg=document.createElement('div');
-    dmg.className='dmg-float ' + (fuente==='enemy'?'dmg-enemy':'dmg-player');
-    dmg.textContent=`-${cantidad}`; celda.appendChild(dmg);
-    setTimeout(()=>dmg.remove(),650);
-  }
-  function efectoMuerte(unidad){
-    const celda = getCelda(unidad.fila, unidad.col);
-    if(!celda) return;
-    const sprite = celda.querySelector('.fichaMiniImg');
-    if (sprite){ sprite.classList.add('death-pop'); setTimeout(()=>{ if(sprite.parentNode) sprite.parentNode.removeChild(sprite); }, 360); }
-  }
   function aplicarDanyo(obj,cant,fuente){
     obj.hp=Math.max(0,obj.hp-cant);
-    efectoAtaque(obj,cant,fuente);
-    mapa.classList.add("shake");
-    setTimeout(()=>mapa.classList.remove("shake"), 400);
-    if(obj.hp<=0){ obj.vivo=false; efectoMuerte(obj); }
+    if(obj.hp<=0) obj.vivo=false;
+    dibujarMapa(); renderFicha(obj);
   }
 
-  // ---------- Validación objetivos ----------
-  function isAliveEnemyById(id){ return enemies.find(e=>e.id===id && e.vivo); }
-  function isAlivePlayerByRef(p){ return players.includes(p) && p.vivo; }
-  function stillInRange(attacker, target){
-    if (!target?.vivo) return false;
-    if (!enLineaRecta(attacker, target)) return false;
-    const d = Math.abs(attacker.fila - target.fila) + Math.abs(attacker.col - target.col);
-    return attacker.range.includes(d);
-  }
-
-  // ---------- Combate jugador ----------
-  function atacarUnidadA(u, objetivoRef){
-    const objetivo = isAliveEnemyById(objetivoRef.id);
-    if (!objetivo || !stillInRange(u, objetivo)) { botonesAccionesPara(u); return; }
-    aplicarDanyo(objetivo, u.damage, 'player');
-    renderFicha(objetivo);
-    setTimeout(()=>{
-      if(!objetivo.vivo){
-        u.kills=(u.kills||0)+1;
-        if (enemies.every(e=>!e.vivo)) {
-          if (fase === 1){ fase = 2; spawnFase(); dibujarMapa(); }
-          else if (fase === 2){ fase = 3; setTurno("fin"); overlayWin.style.display="grid"; }
-        }
-      }
-      u.acted = true; u.mp = 0;
-      seleccionado = null; celdasMovibles.clear(); distSel=null;
-      acciones.innerHTML="";
-      dibujarMapa();
-      comprobarCambioATurnoEnemigo();
-    }, 650);
-  }
-
-  function comprobarCambioATurnoEnemigo(){
-    if (players.every(p => !p.vivo || p.acted || p.mp===0)) {
-      setTurno("enemigo"); setTimeout(turnoIAEnemigos, 140);
+  // ---------- Combate ----------
+  function atacarUnidadA(u,en){
+    aplicarDanyo(en,u.damage,'player');
+    u.acted=true; u.mp=0;
+    seleccionado=null; celdasMovibles.clear(); dibujarMapa(); acciones.innerHTML="";
+    if(enemies.every(e=>!e.vivo)){
+      if(fase===1){ fase=2; spawnFase(); dibujarMapa();}
+      else if(fase===2){ fase=3; overlayWin.style.display="grid";}
     }
   }
 
   // ---------- IA Enemiga ----------
   function turnoIAEnemigos(){
-    if (turno !== "enemigo") return;
-    const vivosJ = players.filter(p=>p.vivo);
-    if (vivosJ.length === 0) { setTurno("fin"); return; }
-
-    for (const en of enemies) {
-      if (!en.vivo) continue;
-      en.mp = ENEMY_MAX_MP;
-
-      // objetivo más cercano
-      let objetivo = vivosJ[0];
-      let mejor = manhattan(en, objetivo);
-      for (const p of vivosJ){ const d = manhattan(en, p); if (d < mejor){ mejor = d; objetivo = p; } }
-
-      // moverse hasta 3 pasos evitando choques y zona no jugable
-      const step = (a,b)=> a<b?1:(a>b?-1:0);
-      while (en.mp > 0){
-        if (manhattan(en, objetivo) === 1) break;
-        const cand = [];
-        if (en.fila !== objetivo.fila) cand.push([en.fila + step(en.fila, objetivo.fila), en.col]);
-        if (en.col  !== objetivo.col ) cand.push([en.fila, en.col + step(en.col,  objetivo.col )]);
-        let moved = false;
-        for (const [nf,nc] of cand){
-          if(!dentro(nf,nc) || noJugable(nf)) continue;
-          const ocupado = enemies.some(o=>o!==en && o.vivo && o.fila===nf && o.col===nc) ||
-                          players.some(p=>p.vivo && p.fila===nf && p.col===nc);
-          if(!ocupado){ en.fila=nf; en.col=nc; en.mp--; moved=true; break; }
-        }
-        if(!moved) break;
+    enemies.forEach(e=>{
+      if(!e.vivo) return;
+      const objetivo = players.find(p=>p.vivo);
+      if(!objetivo) return;
+      if(manhattan(e,objetivo)===1){
+        aplicarDanyo(objetivo,e.damage,'enemy');
       }
-
-      if (manhattan(en, objetivo) === 1 && isAlivePlayerByRef(objetivo)) {
-        aplicarDanyo(objetivo, ENEMY_BASE_DAMAGE, 'enemy');
-        renderFicha(objetivo);
-      }
-    }
-
-    players.forEach(p=>{ if(p.hp<=0) p.vivo=false; p.acted=false; p.mp = PLAYER_MAX_MP; });
-    dibujarMapa();
-
-    if (players.every(p=>!p.vivo)) { setTurno("fin"); }
-    else {
-      setTurno("jugador");
-      if (enemies.every(e=>!e.vivo)) {
-        if (fase === 1){ fase = 2; spawnFase(); dibujarMapa(); }
-        else if (fase === 2){ fase = 3; overlayWin.style.display="grid"; }
-      }
-    }
+    });
+    players.forEach(p=>{p.acted=false; p.mp=PLAYER_MAX_MP;});
+    dibujarMapa(); setTurno("jugador");
   }
 
-  // ---------- Typewriter + diálogo a dos personajes ----------
-  const dialogLines = [
-    { who:'knight', name:'Caballero', text:'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed vitae tortor vel ex congue pulvinar.' },
-    { who:'archer', name:'Arquera',   text:'Vivamus dignissim nisl a urna interdum, vel faucibus nunc fermentum. Proin sit amet mi ut sapien gravida.' },
-    { who:'knight', name:'Caballero', text:'Donec aliquet, turpis a porttitor volutpat, justo mi faucibus urna, sed volutpat nisl orci ac lorem.' },
-    { who:'archer', name:'Arquera',   text:'Todo listo. ¡Entremos en combate!' }
-  ];
-  let dlgIndex = 0;
-  let typing = false;
-  let typingTimer = null;
-
-  function setActiveSpeaker(){
-    const k = document.getElementById('charKnight');
-    const a = document.getElementById('charArcher');
-    const line = dialogLines[dlgIndex];
-    if (!line) return;
-    if (line.who === 'knight'){ k.style.opacity = '1'; a.style.opacity = '.6'; }
-    else { a.style.opacity = '1'; k.style.opacity = '.6'; }
-    document.getElementById('dialogName').textContent = line.name;
-  }
-
-  function typeWriter(text, el, speed=22){
-    typing = true;
-    el.textContent = '';
-    el.classList.add('type-cursor');
-    let i = 0;
-    function step(){
-      if (i <= text.length){
-        el.textContent = text.slice(0,i);
-        i++;
-        typingTimer = setTimeout(step, speed);
-      } else {
-        typing = false;
-        el.classList.remove('type-cursor');
-      }
-    }
-    step();
-  }
-
-  function showCurrentDialog(){
-    const line = dialogLines[dlgIndex];
-    const txtEl = document.getElementById('dialogText');
-    clearTimeout(typingTimer); typingTimer = null;
-    setActiveSpeaker();
-    typeWriter(line.text, txtEl);
-  }
-
-  function advanceDialog(){
-    const txtEl = document.getElementById('dialogText');
-    const line = dialogLines[dlgIndex];
-    if (typing){
-      // Completar instantáneamente
-      clearTimeout(typingTimer); typingTimer = null;
-      txtEl.textContent = line.text;
-      typing = false;
-      txtEl.classList.remove('type-cursor');
-      return;
-    }
-    // Siguiente línea o salir a juego
-    dlgIndex++;
-    if (dlgIndex >= dialogLines.length){
-      document.getElementById("dialogScene").style.display = "none";
-      document.getElementById("mapa").style.display = "grid";
-      setTurno("jugador");
-      applyOrientationLock();
-      return;
-    }
-    showCurrentDialog();
-  }
-
-  // ---------- Inicio ----------
+  // ---------- Init ----------
   function init(){
-    players = [ makeKnight(), makeArcher() ];
-    ajustarTamanoTablero();
-    spawnFase();
-    dibujarMapa();
-    renderFicha(null);
-
-    btnContinuar.onclick = ()=>{ overlayWin.style.display="none"; location.reload(); };
-
-    // Portada → Escena de diálogo
-    const btnJugar = document.getElementById("btnJugar");
-    const portada = document.getElementById("portada");
-    const dialog = document.getElementById("dialogScene");
-    const btnDialogNext = document.getElementById("btnDialogNext");
-
-    btnJugar.onclick = ()=>{
-      portada.style.display="none";
-      dialog.style.display = "block";
-      dlgIndex = 0;
-      showCurrentDialog();
-      applyOrientationLock();
-    };
-    btnDialogNext.onclick = advanceDialog;
-
-    // Bloqueo a vertical
+    players=[makeKnight(),makeArcher()];
+    ajustarTamanoTablero(); spawnFase(); dibujarMapa();
+    btnContinuar.onclick=()=>location.reload();
     setupOrientationLock();
+    setTurno("jugador");
   }
   init();
 })();
