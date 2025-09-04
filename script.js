@@ -1,4 +1,4 @@
-/* build: grid9x16-fxfix */
+/* build: grid9x16-hudUp */
 (function(){
   // --- Dimensiones del tablero 9:16 ---
   const ROWS = 16, COLS = 9;     // formato móvil 9:16
@@ -60,10 +60,12 @@
     const vw = Math.max(document.documentElement.clientWidth,  window.innerWidth  || 0);
     const vh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
     const cell = Math.max(32, Math.floor(Math.min((vw-12)/COLS, (vh-12)/ROWS)));
+
     document.documentElement.style.setProperty('--cell', `${cell}px`);
     document.documentElement.style.setProperty('--cols', COLS);
     document.documentElement.style.setProperty('--rows', ROWS);
-    document.documentElement.style.setProperty('--npRows', NON_PLAYABLE_BOTTOM_ROWS);
+    document.documentElement.style.setProperty('--npRows', NON_PLAYABLE_BOTTOM_ROWS); // expone filas no jugables
+
     mapa.style.width  = `${cell * COLS}px`;
     mapa.style.height = `${cell * ROWS}px`;
   }
@@ -77,7 +79,7 @@
   const manhattan = (a,b) => Math.abs(a.fila-b.fila)+Math.abs(a.col-b.col);
   const enLineaRecta = (a,b) => (a.fila===b.fila) || (a.col===b.col);
 
-  // ✅ Nuevo: buscar celda por data-key (robusto aunque haya HUD dentro de #mapa)
+  // Buscar celda por data-key (robusto aunque haya HUD dentro de #mapa)
   function getCelda(f,c){
     return mapa.querySelector(`.celda[data-key="${f},${c}"]`);
   }
@@ -115,7 +117,7 @@
       for (let c=0; c<COLS; c++){
         const celda = document.createElement("div");
         celda.className = "celda";
-        celda.dataset.key = key(f,c);        // ✅ etiqueta para localizar la celda
+        celda.dataset.key = key(f,c);
         if (noJugable(f)) celda.style.pointerEvents = "none";
         if (seleccionado && celdasMovibles.has(key(f,c))) celda.classList.add("movible");
         if (seleccionado && seleccionado.fila===f && seleccionado.col===c) celda.classList.add("seleccionada");
@@ -164,16 +166,18 @@
     infoMp.style.alignSelf = "center";
     acciones.appendChild(infoMp);
 
+    // Botones de ataque (sin mostrar el daño para ahorrar espacio)
     enemigosEnRango(unidad).forEach(en=>{
       const b=document.createElement("button");
       b.className="primary";
-      b.textContent=`ATACAR ${en.nombre} (-${unidad.damage})`;
+      b.textContent=`ATACAR ${en.nombre}`;    // sin “-50”
       b.onclick=()=>atacarUnidadA(unidad,en);
       acciones.appendChild(b);
     });
 
+    // Más corto para ahorrar espacio
     const bTurn=document.createElement("button");
-    bTurn.textContent="Terminar turno";
+    bTurn.textContent="Pasar turno";
     bTurn.onclick=endTurn;
     acciones.appendChild(bTurn);
   }
@@ -267,7 +271,7 @@
     }
   }
 
-  // FX — ✅ ahora usan getCelda(f,c) en lugar de mapa.children[idx]
+  // FX
   function efectoAtaque(objetivo, cantidad, fuente){
     const celda = getCelda(objetivo.fila, objetivo.col);
     if(!celda) return;
