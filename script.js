@@ -1,8 +1,8 @@
-/* build: cleanHud */
+/* build: np4 */
 (function(){
   // --- Dimensiones del tablero 9:16 ---
   const ROWS = 16, COLS = 9;     // formato móvil 9:16
-  const NON_PLAYABLE_BOTTOM_ROWS = 2; // HUD + 1 extra no jugable
+  const NON_PLAYABLE_BOTTOM_ROWS = 4; // 👈 HUD + 3 extras no jugables
 
   // Parámetros de juego
   const PLAYER_MAX_MP = 5;
@@ -57,7 +57,6 @@
 
   // Tamaño exacto 9:16 sin scroll (robusto en móviles)
   function getUsableViewport(){
-    // Usa innerWidth/innerHeight (mejor en móviles que vh) y quita safe areas
     const w = Math.max(window.innerWidth || 0, document.documentElement.clientWidth || 0);
     const h = Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0);
     // Safe areas (si existen)
@@ -69,7 +68,6 @@
 
   function ajustarTamanoTablero(){
     const { w:vw, h:vh } = getUsableViewport();
-    // margen mínimo para bordes/sombras
     const pad = 12;
     const cell = Math.max(28, Math.floor(Math.min((vw - pad)/COLS, (vh - pad)/ROWS)));
 
@@ -244,7 +242,7 @@
   function enemigosEnRango(u){
     return enemies.filter(e=>{
       if(!e.vivo) return false;
-      if(!(u.fila===e.fila || u.col===e.col)) return false; // línea recta
+      if(!enLineaRecta(u,e)) return false;
       const d = Math.abs(u.fila-e.fila)+Math.abs(u.col-e.col);
       return u.range.includes(d);
     });
@@ -286,7 +284,7 @@
     }
   }
 
-  // FX
+  // FX (usan data-key; siempre en la casilla correcta)
   function efectoAtaque(objetivo, cantidad, fuente){
     const celda = getCelda(objetivo.fila, objetivo.col);
     if(!celda) return;
