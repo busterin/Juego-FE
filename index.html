@@ -4,13 +4,21 @@
   <meta charset="UTF-8" />
   <title>TACTIC HEROES</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <link rel="stylesheet" href="style.css?v=portada-final">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="style.css?v=portrait-lock">
 </head>
 <body>
 
+  <!-- Bloqueo por orientación horizontal -->
+  <div id="orientationBlocker" style="display:none">
+    <div class="obx">
+      <p>Gira el dispositivo para jugar en vertical</p>
+    </div>
+  </div>
+
   <!-- Portada -->
   <div id="portada">
-    <img src="assets/Portada.PNG" alt="Portada Tactic Heroes" class="portada-img">
+    <img src="assets/Portada.png" alt="Portada Tactic Heroes" class="portada-img">
     <button id="btnJugar" class="btn-jugar">JUGAR</button>
   </div>
 
@@ -33,6 +41,6 @@
     </div>
   </div>
 
-  <script src="script.js?v=portada-final"></script>
+  <script src="script.js?v=portrait-lock"></script>
 </body>
 </html>
