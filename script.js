@@ -1,4 +1,4 @@
-/* build: portada-final + enemyfx + mp3 + shake */
+/* build: portrait-lock */
 (function(){
   // --- Dimensiones del tablero 9:16 ---
   const ROWS = 16, COLS = 9;     // formato móvil 9:16
@@ -6,7 +6,7 @@
 
   // Parámetros de juego
   const PLAYER_MAX_MP = 5;
-  const ENEMY_MAX_MP  = 3;       // enemigos ahora mueven 3 casillas
+  const ENEMY_MAX_MP  = 3;       // enemigos mueven 3 casillas
   const ENEMY_BASE_DAMAGE = 50;
 
   // Estado
@@ -83,6 +83,36 @@
   window.addEventListener('orientationchange', ajustarTamanoTablero);
   document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) ajustarTamanoTablero(); });
   new ResizeObserver(()=>ajustarTamanoTablero()).observe(document.body);
+
+  // --- Bloqueo de orientación a vertical ---
+  function isLandscape(){
+    const { innerWidth:w, innerHeight:h } = window;
+    return w > h;
+  }
+  function applyOrientationLock(){
+    const blocker = document.getElementById("orientationBlocker");
+    const mapaEl = document.getElementById("mapa");
+    const portada = document.getElementById("portada");
+    const enHorizontal = isLandscape();
+
+    blocker.style.display = enHorizontal ? "grid" : "none";
+
+    if (mapaEl){
+      mapaEl.style.pointerEvents = enHorizontal ? "none" : "auto";
+      mapaEl.style.filter = enHorizontal ? "grayscale(1) blur(1.5px) brightness(.7)" : "none";
+    }
+    if (portada){
+      portada.style.pointerEvents = enHorizontal ? "none" : "auto";
+      portada.style.filter = enHorizontal ? "grayscale(1) blur(1.5px) brightness(.7)" : "none";
+    }
+  }
+  function setupOrientationLock(){
+    applyOrientationLock();
+    window.addEventListener("resize", applyOrientationLock, { passive:true });
+    window.addEventListener("orientationchange", ()=>{
+      setTimeout(applyOrientationLock, 100);
+    });
+  }
 
   // Utilidades
   const key = (f,c) => `${f},${c}`;
@@ -299,8 +329,6 @@
     const sprite = celda.querySelector('.fichaMiniImg');
     if (sprite){ sprite.classList.add('death-pop'); setTimeout(()=>{ if(sprite.parentNode) sprite.parentNode.removeChild(sprite); }, 360); }
   }
-
-  // 👇 Añadimos el shake aquí
   function aplicarDanyo(obj,cant,fuente){
     obj.hp=Math.max(0,obj.hp-cant);
     efectoAtaque(obj,cant,fuente);
@@ -414,7 +442,7 @@
     }
   }
 
-  // Inicio + Portada
+  // Inicio + Portada + Lock orientación
   function init(){
     players = [ makeKnight(), makeArcher() ];
     ajustarTamanoTablero();
@@ -424,7 +452,7 @@
 
     btnContinuar.onclick = ()=>{ overlayWin.style.display="none"; location.reload(); };
 
-    // Portada (recuerda que la imagen es assets/Portada.png)
+    // Portada
     const btnJugar = document.getElementById("btnJugar");
     const portada = document.getElementById("portada");
     btnJugar.onclick = ()=>{
@@ -432,6 +460,9 @@
       document.getElementById("mapa").style.display="grid";
       setTurno("jugador");
     };
+
+    // Bloqueo a vertical
+    setupOrientationLock();
   }
   init();
 })();
