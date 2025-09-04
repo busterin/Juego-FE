@@ -1,7 +1,7 @@
-/* build: grid9x16 */
+/* build: grid9x16-fxfix */
 (function(){
   // --- Dimensiones del tablero 9:16 ---
-  const ROWS = 16, COLS = 9;     // 👈 formato móvil 9:16
+  const ROWS = 16, COLS = 9;     // formato móvil 9:16
   const NON_PLAYABLE_BOTTOM_ROWS = 2; // HUD + 1 extra no jugable
 
   // Parámetros de juego
@@ -63,6 +63,7 @@
     document.documentElement.style.setProperty('--cell', `${cell}px`);
     document.documentElement.style.setProperty('--cols', COLS);
     document.documentElement.style.setProperty('--rows', ROWS);
+    document.documentElement.style.setProperty('--npRows', NON_PLAYABLE_BOTTOM_ROWS);
     mapa.style.width  = `${cell * COLS}px`;
     mapa.style.height = `${cell * ROWS}px`;
   }
@@ -75,6 +76,11 @@
   const noJugable = (f) => f >= ROWS - NON_PLAYABLE_BOTTOM_ROWS;
   const manhattan = (a,b) => Math.abs(a.fila-b.fila)+Math.abs(a.col-b.col);
   const enLineaRecta = (a,b) => (a.fila===b.fila) || (a.col===b.col);
+
+  // ✅ Nuevo: buscar celda por data-key (robusto aunque haya HUD dentro de #mapa)
+  function getCelda(f,c){
+    return mapa.querySelector(`.celda[data-key="${f},${c}"]`);
+  }
 
   // Oleadas (evitando zona no jugable)
   function spawnFase(){
@@ -109,6 +115,7 @@
       for (let c=0; c<COLS; c++){
         const celda = document.createElement("div");
         celda.className = "celda";
+        celda.dataset.key = key(f,c);        // ✅ etiqueta para localizar la celda
         if (noJugable(f)) celda.style.pointerEvents = "none";
         if (seleccionado && celdasMovibles.has(key(f,c))) celda.classList.add("movible");
         if (seleccionado && seleccionado.fila===f && seleccionado.col===c) celda.classList.add("seleccionada");
@@ -260,10 +267,10 @@
     }
   }
 
-  // FX
+  // FX — ✅ ahora usan getCelda(f,c) en lugar de mapa.children[idx]
   function efectoAtaque(objetivo, cantidad, fuente){
-    const idx = objetivo.fila * COLS + objetivo.col;
-    const celda = mapa.children[idx]; if(!celda) return;
+    const celda = getCelda(objetivo.fila, objetivo.col);
+    if(!celda) return;
     const flash = (fuente==='enemy')?'flash-enemy':'flash-player';
     celda.classList.add(flash); setTimeout(()=>celda.classList.remove(flash),280);
 
@@ -276,8 +283,8 @@
     setTimeout(()=>dmg.remove(),650);
   }
   function efectoMuerte(unidad){
-    const idx = unidad.fila * COLS + unidad.col;
-    const celda = mapa.children[idx]; if(!celda) return;
+    const celda = getCelda(unidad.fila, unidad.col);
+    if(!celda) return;
     const sprite = celda.querySelector('.fichaMiniImg');
     if (sprite){ sprite.classList.add('death-pop'); setTimeout(()=>{ if(sprite.parentNode) sprite.parentNode.removeChild(sprite); }, 360); }
   }
