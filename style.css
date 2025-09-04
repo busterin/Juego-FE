@@ -9,8 +9,11 @@
   /* Filas no jugables (debe coincidir con JS) */
   --npRows: 4;
 
-  /* Altura del HUD en "filas" (≤ npRows). Ajusta para subir/bajar la UI. */
+  /* Altura del HUD en "filas" (≤ npRows) */
   --hudRows: 1.6;
+
+  /* Offset para subir el HUD dentro del área no jugable */
+  --hudOffset: 2.2;
 }
 
 * { box-sizing: border-box; }
@@ -87,19 +90,21 @@ body {
   position: relative;
 }
 
-/* HUD dentro del mapa, alineado con filas no jugables y SIN resaltado de fondo */
+/* HUD dentro del mapa, más arriba en la zona no jugable */
 #hud{
   position: absolute;
   left: 0; right: 0;
-  /* Comienza a --hudRows filas desde el final → bien arriba dentro del área no jugable */
-  top: calc(var(--cell) * (var(--rows) - var(--hudRows)));
+
+  /* Empieza (rows - hudRows - hudOffset) → más arriba sin cambiar el alto */
+  top: calc(var(--cell) * (var(--rows) - var(--hudRows) - var(--hudOffset)));
   height: calc(var(--cell) * var(--hudRows));
+
   padding: 6px 8px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 
-  background: transparent; /* sin marca ni gradiente */
+  background: transparent;
   pointer-events: auto;
 }
 
