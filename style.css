@@ -1,8 +1,16 @@
 :root{
   --cell: 40px;   /* recalculada por JS para ocupar lo máximo en 9:16 */
   --gap: 0px;
+
+  /* Dimensiones del tablero 9:16 */
   --cols: 9;
   --rows: 16;
+
+  /* Filas no jugables (expuestas por JS) */
+  --npRows: 2;
+
+  /* Altura del HUD en "filas" (≤ npRows). Súbelo/bájalo a tu gusto. */
+  --hudRows: 1.2;
 }
 
 * { box-sizing: border-box; }
@@ -76,15 +84,30 @@ body {
   position: relative;
 }
 
-/* HUD inferior dentro del mapa */
+/* HUD dentro del mapa, alineado con filas no jugables y MÁS ARRIBA */
 #hud{
-  position: absolute; left: 0; right: 0; bottom: 0;
-  height: clamp(78px, calc(2.0 * var(--cell)), 184px); /* un poco más alto en 16:9 */
+  position: absolute;
+  left: 0; right: 0;
+
+  /* Comienza a --hudRows filas desde el final → más arriba dentro del área no jugable */
+  top: calc(var(--cell) * (var(--rows) - var(--hudRows)));
+  height: calc(var(--cell) * var(--hudRows));
+
   padding: 6px 8px;
-  display: flex; flex-direction: column; gap: 6px;
-  background: linear-gradient(to top, rgba(0,0,0,.75), rgba(0,0,0,.35) 60%, rgba(0,0,0,0));
-  border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  background: linear-gradient(
+    to top,
+    rgba(0,0,0,.75),
+    rgba(0,0,0,.35) 65%,
+    rgba(0,0,0,0)
+  );
+
   pointer-events: auto;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
 }
 
 /* Celdas */
@@ -166,3 +189,12 @@ button.primary { background: #1b76ff; color: white; border-color: #1b76ff; }
 
 @keyframes death-pop { 0%{opacity:1; transform: scale(1);} 100%{opacity:0; transform: scale(1.15);} }
 .death-pop { animation: death-pop .35s ease-out forwards; }
+
+/* Ultra-compacto para pantallas muy pequeñas */
+@media (max-width: 380px){
+  .card { grid-template-columns: 46px 1fr; gap: 6px; }
+  .card .portrait { width: 46px; height: 46px; }
+  .meta { font-size: 11px; }
+  .hp .value { font-size: 10px; min-width: 64px; }
+  button { padding: 6px 9px; font-size: 12px; }
+}
