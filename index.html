@@ -5,7 +5,7 @@
   <title>TACTIC HEROES</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="style.css?v=dialogue">
+  <link rel="stylesheet" href="style.css?v=dialogue-2chars">
 </head>
 <body>
 
@@ -18,22 +18,25 @@
 
   <!-- Portada -->
   <div id="portada">
-    <img src="assets/Portada.PNG" alt="Portada Tactic Heroes" class="portada-img">
+    <img src="assets/Portada.png" alt="Portada Tactic Heroes" class="portada-img">
     <button id="btnJugar" class="btn-jugar">JUGAR</button>
   </div>
 
-  <!-- Escena de diálogo -->
+  <!-- Escena de diálogo (2 personajes + typewriter) -->
   <div id="dialogScene" style="display:none">
     <div class="dialog-bg"></div>
-    <img class="dialog-char" src="assets/player.png" alt="Héroe">
+
+    <!-- Personajes -->
+    <img class="dialog-char left"  id="charKnight" src="assets/player.png"  alt="Caballero">
+    <img class="dialog-char right" id="charArcher" src="assets/archer.png" alt="Arquera">
+
+    <!-- Caja de diálogo -->
     <div class="dialog-box">
-      <div class="dialog-name">Caballero</div>
-      <div class="dialog-text" id="dialogText">
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur at orci id nisi lobortis
-        placerat. Integer feugiat, magna vitae feugiat aliquet, turpis ligula dapibus nulla, id
-        fermentum augue lectus quis urna.
+      <div class="dialog-name" id="dialogName">Caballero</div>
+      <div class="dialog-text" id="dialogText"></div>
+      <div class="dialog-cta">
+        <button id="btnDialogNext" class="primary small">Continuar</button>
       </div>
-      <button id="btnDialogNext" class="primary small">Continuar</button>
     </div>
   </div>
 
@@ -56,6 +59,6 @@
     </div>
   </div>
 
-  <script src="script.js?v=dialogue"></script>
+  <script src="script.js?v=dialogue-2chars"></script>
 </body>
 </html>
