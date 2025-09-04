@@ -220,6 +220,19 @@ button.primary { background: #1b76ff; color: white; border-color: #1b76ff; }
 @keyframes death-pop { 0%{opacity:1; transform: scale(1);} 100%{opacity:0; transform: scale(1.15);} }
 .death-pop { animation: death-pop .35s ease-out forwards; }
 
+/* --- Screen Shake --- */
+@keyframes screen-shake {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-6px, 4px); }
+  40% { transform: translate(6px, -3px); }
+  60% { transform: translate(-4px, 2px); }
+  80% { transform: translate(4px, -2px); }
+  100% { transform: translate(0, 0); }
+}
+.shake {
+  animation: screen-shake 0.4s ease-in-out;
+}
+
 /* Ultra-compacto para pantallas muy pequeñas */
 @media (max-width: 380px){
   .card { grid-template-columns: 46px 1fr; gap: 6px; }
