@@ -30,8 +30,6 @@ body {
   display: flex;
   flex-direction: column;
   padding-bottom: env(safe-area-inset-bottom);
-
-  /* 👇 Fondo de pantalla completa */
   background-image: var(--bg-url);
   background-size: cover;
   background-position: center;
@@ -53,7 +51,7 @@ body {
 #portada .portada-img {
   width: 100%;
   height: 100%;
-  object-fit: cover;       /* rellena pantalla, aunque recorte */
+  object-fit: cover;
   object-position: center;
   pointer-events: none;
 }
@@ -74,29 +72,65 @@ body {
   background: linear-gradient(180deg, #2ecc71, #229954);
 }
 
+/* ---------- Escena de diálogo ---------- */
+#dialogScene{
+  position: fixed; inset: 0; z-index: 12000;
+  display: block;
+}
+#dialogScene .dialog-bg{
+  position: absolute; inset: 0;
+  background-image: var(--bg-url);
+  background-size: cover;
+  background-position: center;
+  filter: brightness(.95) saturate(1.05);
+}
+.dialog-char{
+  position: absolute; left: 0; bottom: 18%;
+  height: 56%;
+  object-fit: contain; image-rendering: pixelated;
+  transform: translateX(-110%);
+  animation: char-slide-in .55s ease-out forwards;
+}
+@keyframes char-slide-in {
+  0% { transform: translateX(-110%); opacity: .0; }
+  70%{ transform: translateX(4%);    opacity: 1; }
+  100%{transform: translateX(0%);    opacity: 1; }
+}
+.dialog-box{
+  position: absolute; left: 4%; right: 4%; bottom: 4%;
+  background: rgba(7,12,16,.88);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 12px;
+  padding: 10px 12px 12px 12px;
+  box-shadow: 0 10px 24px rgba(0,0,0,.35);
+}
+.dialog-name{
+  font-weight: 800; margin-bottom: 6px; color: #fff; letter-spacing: .2px;
+}
+.dialog-text{
+  font-size: 14px; line-height: 1.35; color: #e6ecf4; margin-bottom: 10px;
+}
+.dialog-box .small{
+  padding: 7px 12px; font-size: 13px; border-radius: 10px;
+}
+
 /* ---------- Overlay victoria ---------- */
 .overlay {
   position: fixed; inset: 0; z-index: 9999;
   display: grid; place-items: center;
-
-  /* capa de color semitransparente + blur */
   background: rgba(0,0,0,.55);
   backdrop-filter: blur(4px);
 }
-
-/* Fondo propio del overlay para evitar bandas negras */
 .overlay::before{
   content: "";
   position: absolute; inset: 0; z-index: -1;
   background-image: var(--bg-url);
-  background-size: cover;      /* rellena toda la pantalla */
+  background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  transform: scale(1.02);      /* ligero zoom para evitar bordes al hacer blur */
-  filter: brightness(0.9);     /* sutil oscurecido bajo la capa negra */
+  transform: scale(1.02);
+  filter: brightness(0.9);
 }
-
-/* Caja de mensaje */
 .overlay-box{
   background: #101418;
   border: 1px solid rgba(255,255,255,.15);
@@ -138,8 +172,6 @@ body {
   margin: auto;
   user-select: none;
   touch-action: manipulation;
-
-  /* 👇 quitamos background aquí para evitar “doble imagen” */
   border: 2px solid rgba(255,255,255,.15);
   border-radius: 10px;
   box-shadow: 0 8px 20px rgba(0,0,0,.3);
@@ -150,15 +182,12 @@ body {
 #hud{
   position: absolute;
   left: 0; right: 0;
-
   top: calc(var(--cell) * (var(--rows) - var(--hudRows) - var(--hudOffset)));
   height: calc(var(--cell) * var(--hudRows));
-
   padding: 6px 8px;
   display: flex;
   flex-direction: column;
   gap: 6px;
-
   background: transparent;
   pointer-events: auto;
 }
