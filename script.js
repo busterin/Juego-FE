@@ -1,4 +1,4 @@
-/* build: portada-final */
+/* build: portada-final + enemyfx + mp3 + shake */
 (function(){
   // --- Dimensiones del tablero 9:16 ---
   const ROWS = 16, COLS = 9;     // formato móvil 9:16
@@ -6,7 +6,7 @@
 
   // Parámetros de juego
   const PLAYER_MAX_MP = 5;
-  const ENEMY_MAX_MP  = 5;
+  const ENEMY_MAX_MP  = 3;       // enemigos ahora mueven 3 casillas
   const ENEMY_BASE_DAMAGE = 50;
 
   // Estado
@@ -299,10 +299,20 @@
     const sprite = celda.querySelector('.fichaMiniImg');
     if (sprite){ sprite.classList.add('death-pop'); setTimeout(()=>{ if(sprite.parentNode) sprite.parentNode.removeChild(sprite); }, 360); }
   }
+
+  // 👇 Añadimos el shake aquí
   function aplicarDanyo(obj,cant,fuente){
     obj.hp=Math.max(0,obj.hp-cant);
     efectoAtaque(obj,cant,fuente);
-    if(obj.hp<=0){ obj.vivo=false; efectoMuerte(obj); }
+
+    // sacudir el tablero en cada golpe
+    mapa.classList.add("shake");
+    setTimeout(()=>mapa.classList.remove("shake"), 400);
+
+    if(obj.hp<=0){ 
+      obj.vivo=false; 
+      efectoMuerte(obj); 
+    }
   }
 
   // Validación objetivos
@@ -365,7 +375,7 @@
         if (d < mejor){ mejor = d; objetivo = p; }
       }
 
-      // moverse hasta 5 pasos evitando choques; no entrar en zona no jugable
+      // moverse hasta 3 pasos evitando choques; no entrar en zona no jugable
       const step = (a,b)=> a<b?1:(a>b?-1:0);
       while (en.mp > 0){
         if (manhattan(en, objetivo) === 1) break;
@@ -385,6 +395,7 @@
       // Validar objetivo y atacar
       if (manhattan(en, objetivo) === 1 && isAlivePlayerByRef(objetivo)) {
         aplicarDanyo(objetivo, ENEMY_BASE_DAMAGE, 'enemy');
+        renderFicha(objetivo); // actualizar ficha para ver HP restante al ser atacado
       }
     }
 
@@ -413,7 +424,7 @@
 
     btnContinuar.onclick = ()=>{ overlayWin.style.display="none"; location.reload(); };
 
-    // Portada
+    // Portada (recuerda que la imagen es assets/Portada.png)
     const btnJugar = document.getElementById("btnJugar");
     const portada = document.getElementById("portada");
     btnJugar.onclick = ()=>{
