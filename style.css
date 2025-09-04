@@ -6,14 +6,12 @@
   --cols: 9;
   --rows: 16;
 
-  /* Filas no jugables (debe coincidir con JS) */
+  /* Filas no jugables (coincidir con JS) */
   --npRows: 4;
 
-  /* Altura del HUD en "filas" (≤ npRows) */
+  /* Altura del HUD en "filas" (≤ npRows) y desplazamiento hacia arriba */
   --hudRows: 1.6;
-
-  /* Offset para subir el HUD dentro del área no jugable */
-  --hudOffset: 2.2;
+  --hudOffset: 2.2;   /* súbelo a 2.4 si lo quieres aún más arriba */
 }
 
 * { box-sizing: border-box; }
@@ -32,7 +30,41 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Overlay de victoria */
+/* ---------- Portada ---------- */
+#portada {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+}
+#portada .portada-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+#portada .btn-jugar {
+  position: absolute;
+  bottom: 12%;
+  padding: 14px 26px;
+  font-size: 20px;
+  font-weight: bold;
+  border-radius: 12px;
+  border: 2px solid #145a32;
+  background: linear-gradient(180deg, #27ae60, #1e8449);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,.4);
+}
+#portada .btn-jugar:hover {
+  background: linear-gradient(180deg, #2ecc71, #229954);
+}
+
+/* ---------- Overlay victoria ---------- */
 .overlay {
   position: fixed; inset: 0; z-index: 9999;
   display: grid; place-items: center;
@@ -50,7 +82,7 @@ body {
 }
 .overlay-box h1{ margin: 0 0 14px 0; }
 
-/* Banner de turno */
+/* ---------- Banner de turno ---------- */
 .turn-banner{
   position: fixed;
   left: 50%; top: max(10px, env(safe-area-inset-top));
@@ -68,7 +100,7 @@ body {
   box-shadow: 0 6px 20px rgba(0,0,0,.35);
 }
 
-/* Tablero 9x16, escalado exacto a 9:16 */
+/* ---------- Tablero 9x16 ---------- */
 #mapa {
   flex: 1 1 auto;
   display: grid;
@@ -108,7 +140,7 @@ body {
   pointer-events: auto;
 }
 
-/* Celdas */
+/* Celdas y selección */
 .celda {
   width: var(--cell); height: var(--cell);
   display: grid; place-items: center;
@@ -165,7 +197,7 @@ button {
 }
 button.primary { background: #1b76ff; color: white; border-color: #1b76ff; }
 
-/* FX */
+/* ---------- FX ---------- */
 @keyframes flash-yellow { 0% { background-color: rgba(255,230,0,.75);} 100% {background-color: transparent;} }
 @keyframes flash-red    { 0% { background-color: rgba(255,60,60,.75);} 100% {background-color: transparent;} }
 .celda.flash-player { animation: flash-yellow .28s ease-out; }
