@@ -4,9 +4,16 @@
   <meta charset="UTF-8" />
   <title>TACTIC HEROES</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <link rel="stylesheet" href="style.css?v=np4">
+  <link rel="stylesheet" href="style.css?v=portada-final">
 </head>
 <body>
+
+  <!-- Portada -->
+  <div id="portada">
+    <img src="assets/Portada.png" alt="Portada Tactic Heroes" class="portada-img">
+    <button id="btnJugar" class="btn-jugar">JUGAR</button>
+  </div>
+
   <!-- Overlay NIVEL COMPLETADO -->
   <div id="overlayWin" class="overlay" style="display:none">
     <div class="overlay-box">
@@ -19,13 +26,13 @@
   <div id="turnBanner" class="turn-banner" style="display:none">TU TURNO</div>
 
   <!-- Tablero (9x16) + HUD dentro -->
-  <div id="mapa">
+  <div id="mapa" style="display:none">
     <div id="hud">
       <div id="ficha"></div>
       <div id="acciones"></div>
     </div>
   </div>
 
-  <script src="script.js?v=np4"></script>
+  <script src="script.js?v=portada-final"></script>
 </body>
 </html>
