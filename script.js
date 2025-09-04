@@ -1,4 +1,4 @@
-/* build: portrait-lock */
+/* build: dialogue */
 (function(){
   // --- Dimensiones del tablero 9:16 ---
   const ROWS = 16, COLS = 9;     // formato móvil 9:16
@@ -93,18 +93,17 @@
     const blocker = document.getElementById("orientationBlocker");
     const mapaEl = document.getElementById("mapa");
     const portada = document.getElementById("portada");
+    const dialog = document.getElementById("dialogScene");
     const enHorizontal = isLandscape();
 
     blocker.style.display = enHorizontal ? "grid" : "none";
 
-    if (mapaEl){
-      mapaEl.style.pointerEvents = enHorizontal ? "none" : "auto";
-      mapaEl.style.filter = enHorizontal ? "grayscale(1) blur(1.5px) brightness(.7)" : "none";
-    }
-    if (portada){
-      portada.style.pointerEvents = enHorizontal ? "none" : "auto";
-      portada.style.filter = enHorizontal ? "grayscale(1) blur(1.5px) brightness(.7)" : "none";
-    }
+    const dim = (el) => {
+      if(!el) return;
+      el.style.pointerEvents = enHorizontal ? "none" : "auto";
+      el.style.filter = enHorizontal ? "grayscale(1) blur(1.5px) brightness(.7)" : "none";
+    };
+    dim(mapaEl); dim(portada); dim(dialog);
   }
   function setupOrientationLock(){
     applyOrientationLock();
@@ -208,7 +207,7 @@
     enemigosEnRango(unidad).forEach(en=>{
       const b=document.createElement("button");
       b.className="primary";
-      b.textContent=`ATACAR ${en.nombre}`;   // sin “-50”
+      b.textContent=`ATACAR ${en.nombre}`;
       b.onclick=()=>atacarUnidadA(unidad,en);
       acciones.appendChild(b);
     });
@@ -332,15 +331,9 @@
   function aplicarDanyo(obj,cant,fuente){
     obj.hp=Math.max(0,obj.hp-cant);
     efectoAtaque(obj,cant,fuente);
-
-    // sacudir el tablero en cada golpe
     mapa.classList.add("shake");
     setTimeout(()=>mapa.classList.remove("shake"), 400);
-
-    if(obj.hp<=0){ 
-      obj.vivo=false; 
-      efectoMuerte(obj); 
-    }
+    if(obj.hp<=0){ obj.vivo=false; efectoMuerte(obj); }
   }
 
   // Validación objetivos
@@ -423,7 +416,7 @@
       // Validar objetivo y atacar
       if (manhattan(en, objetivo) === 1 && isAlivePlayerByRef(objetivo)) {
         aplicarDanyo(objetivo, ENEMY_BASE_DAMAGE, 'enemy');
-        renderFicha(objetivo); // actualizar ficha para ver HP restante al ser atacado
+        renderFicha(objetivo);
       }
     }
 
@@ -442,7 +435,7 @@
     }
   }
 
-  // Inicio + Portada + Lock orientación
+  // Inicio + Portada + Diálogo + Lock orientación
   function init(){
     players = [ makeKnight(), makeArcher() ];
     ajustarTamanoTablero();
@@ -455,10 +448,22 @@
     // Portada
     const btnJugar = document.getElementById("btnJugar");
     const portada = document.getElementById("portada");
+    const dialog = document.getElementById("dialogScene");
+    const btnDialogNext = document.getElementById("btnDialogNext");
+
     btnJugar.onclick = ()=>{
       portada.style.display="none";
+      // Mostrar escena de diálogo
+      dialog.style.display = "block";
+      applyOrientationLock(); // aplicar filtro si estuviera en horizontal
+    };
+
+    // Salir de la escena de diálogo hacia el juego
+    btnDialogNext.onclick = ()=>{
+      dialog.style.display = "none";
       document.getElementById("mapa").style.display="grid";
       setTurno("jugador");
+      applyOrientationLock();
     };
 
     // Bloqueo a vertical
