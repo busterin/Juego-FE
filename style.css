@@ -1,5 +1,5 @@
 :root{
-  --cell: 40px;   /* recalculada por JS para ocupar lo máximo en 9:16 */
+  --cell: 40px;    /* recalculada por JS para ocupar lo máximo en 9:16 */
   --gap: 0px;
 
   /* Dimensiones del tablero 9:16 */
@@ -9,7 +9,7 @@
   /* Filas no jugables (expuestas por JS) */
   --npRows: 2;
 
-  /* Altura del HUD en "filas" (≤ npRows). Súbelo/bájalo a tu gusto. */
+  /* Altura del HUD en "filas" (≤ npRows). Sube/baja a tu gusto. */
   --hudRows: 1.2;
 }
 
@@ -19,12 +19,15 @@ html, body { height: 100%; }
 body {
   font-family: system-ui, Arial, sans-serif;
   margin: 0;
+  /* Mejor manejo en móviles: */
+  height: 100dvh;                  /* soportado en navegadores modernos */
+  min-height: -webkit-fill-available; /* iOS fallback */
   background: #000;
   color: #fff;
-  height: 100vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* Overlay de victoria */
@@ -48,7 +51,8 @@ body {
 /* Banner de turno */
 .turn-banner{
   position: fixed;
-  left: 50%; top: 10px; transform: translateX(-50%);
+  left: 50%; top: max(10px, env(safe-area-inset-top));
+  transform: translateX(-50%);
   z-index: 8000;
   background: rgba(0,0,0,.6);
   border: 1px solid rgba(255,255,255,.25);
@@ -84,30 +88,21 @@ body {
   position: relative;
 }
 
-/* HUD dentro del mapa, alineado con filas no jugables y MÁS ARRIBA */
+/* HUD dentro del mapa, alineado con filas no jugables y SIN resaltado de fondo */
 #hud{
   position: absolute;
   left: 0; right: 0;
-
   /* Comienza a --hudRows filas desde el final → más arriba dentro del área no jugable */
   top: calc(var(--cell) * (var(--rows) - var(--hudRows)));
   height: calc(var(--cell) * var(--hudRows));
-
   padding: 6px 8px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 
-  background: linear-gradient(
-    to top,
-    rgba(0,0,0,.75),
-    rgba(0,0,0,.35) 65%,
-    rgba(0,0,0,0)
-  );
-
+  /* Nada de fondo ni gradientes: la ilustración se ve normal */
+  background: transparent;
   pointer-events: auto;
-  border-bottom-left-radius: 8px;
-  border-bottom-right-radius: 8px;
 }
 
 /* Celdas */
@@ -130,7 +125,7 @@ body {
 #ficha {
   display: none; width: 100%;
   text-align: left;
-  background: rgba(16,20,24,.9);
+  background: rgba(16,20,24,.88);   /* tarjeta legible, sin cubrir fuera del HUD */
   color: #ddd;
   border: 1px solid rgba(255,255,255,.12);
   border-radius: 10px; padding: 6px 8px;
