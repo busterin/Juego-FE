@@ -1,17 +1,17 @@
-/* build: dialogue */
+/* build: dialogue-2chars */
 (function(){
   // --- Dimensiones del tablero 9:16 ---
-  const ROWS = 16, COLS = 9;     // formato móvil 9:16
-  const NON_PLAYABLE_BOTTOM_ROWS = 4; // HUD + 3 extras no jugables
+  const ROWS = 16, COLS = 9;
+  const NON_PLAYABLE_BOTTOM_ROWS = 4;
 
-  // Parámetros de juego
+  // Parámetros
   const PLAYER_MAX_MP = 5;
-  const ENEMY_MAX_MP  = 3;       // enemigos mueven 3 casillas
+  const ENEMY_MAX_MP  = 3;
   const ENEMY_BASE_DAMAGE = 50;
 
   // Estado
-  let turno = "jugador";                 // 'jugador' | 'enemigo' | 'fin'
-  let fase = 1;                          // 1: 3 enemigos, 2: 4 enemigos, 3: completado
+  let turno = "jugador";
+  let fase = 1;
   let enemies = [];
   let players = [];
   let seleccionado = null;
@@ -44,7 +44,7 @@
   const btnContinuar = document.getElementById("btnContinuar");
   const turnBanner = document.getElementById("turnBanner");
 
-  // Banner turno
+  // ---------- Banner turno ----------
   function showTurnBanner(text){
     turnBanner.textContent = text;
     turnBanner.style.display = "block";
@@ -55,7 +55,7 @@
     showTurnBanner(t==="jugador" ? "TU TURNO" : t==="enemigo" ? "TURNO ENEMIGO" : "FIN DE PARTIDA");
   }
 
-  // Tamaño exacto 9:16 sin scroll (robusto en móviles)
+  // ---------- Layout ----------
   function getUsableViewport(){
     const w = Math.max(window.innerWidth || 0, document.documentElement.clientWidth || 0);
     const h = Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0);
@@ -64,65 +64,49 @@
     const insetBottom = parseInt(style.getPropertyValue('env(safe-area-inset-bottom)')) || 0;
     return { w, h: h - insetTop - insetBottom };
   }
-
   function ajustarTamanoTablero(){
     const { w:vw, h:vh } = getUsableViewport();
     const pad = 12;
     const cell = Math.max(28, Math.floor(Math.min((vw - pad)/COLS, (vh - pad)/ROWS)));
-
     document.documentElement.style.setProperty('--cell', `${cell}px`);
     document.documentElement.style.setProperty('--cols', COLS);
     document.documentElement.style.setProperty('--rows', ROWS);
     document.documentElement.style.setProperty('--npRows', NON_PLAYABLE_BOTTOM_ROWS);
-
     mapa.style.width  = `${cell * COLS}px`;
     mapa.style.height = `${cell * ROWS}px`;
   }
-
   window.addEventListener('resize', ajustarTamanoTablero);
   window.addEventListener('orientationchange', ajustarTamanoTablero);
   document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) ajustarTamanoTablero(); });
   new ResizeObserver(()=>ajustarTamanoTablero()).observe(document.body);
 
-  // --- Bloqueo de orientación a vertical ---
-  function isLandscape(){
-    const { innerWidth:w, innerHeight:h } = window;
-    return w > h;
-  }
+  // ---------- Bloqueo vertical ----------
+  function isLandscape(){ const { innerWidth:w, innerHeight:h } = window; return w > h; }
   function applyOrientationLock(){
     const blocker = document.getElementById("orientationBlocker");
     const mapaEl = document.getElementById("mapa");
     const portada = document.getElementById("portada");
     const dialog = document.getElementById("dialogScene");
     const enHorizontal = isLandscape();
-
     blocker.style.display = enHorizontal ? "grid" : "none";
-
-    const dim = (el) => {
-      if(!el) return;
-      el.style.pointerEvents = enHorizontal ? "none" : "auto";
-      el.style.filter = enHorizontal ? "grayscale(1) blur(1.5px) brightness(.7)" : "none";
-    };
+    const dim = (el) => { if(!el) return; el.style.pointerEvents = enHorizontal ? "none" : "auto"; el.style.filter = enHorizontal ? "grayscale(1) blur(1.5px) brightness(.7)" : "none"; };
     dim(mapaEl); dim(portada); dim(dialog);
   }
   function setupOrientationLock(){
     applyOrientationLock();
     window.addEventListener("resize", applyOrientationLock, { passive:true });
-    window.addEventListener("orientationchange", ()=>{
-      setTimeout(applyOrientationLock, 100);
-    });
+    window.addEventListener("orientationchange", ()=> setTimeout(applyOrientationLock, 100));
   }
 
-  // Utilidades
+  // ---------- Utils ----------
   const key = (f,c) => `${f},${c}`;
   const dentro = (f,c) => f>=0 && f<ROWS && c>=0 && c<COLS;
   const noJugable = (f) => f >= ROWS - NON_PLAYABLE_BOTTOM_ROWS;
   const manhattan = (a,b) => Math.abs(a.fila-b.fila)+Math.abs(a.col-b.col);
   const enLineaRecta = (a,b) => (a.fila===b.fila) || (a.col===b.col);
-
   function getCelda(f,c){ return mapa.querySelector(`.celda[data-key="${f},${c}"]`); }
 
-  // Oleadas (evitando zona no jugable)
+  // ---------- Oleadas ----------
   function spawnFase(){
     enemies = [];
     const count = (fase === 1) ? 3 : (fase === 2) ? 4 : 0;
@@ -148,7 +132,7 @@
     if (turno==="jugador") players.forEach(p=>{ p.acted=false; p.mp=PLAYER_MAX_MP; });
   }
 
-  // Render
+  // ---------- Render ----------
   function dibujarMapa(){
     mapa.querySelectorAll(".celda").forEach(n=>n.remove());
     for (let f=0; f<ROWS; f++){
@@ -185,7 +169,7 @@
     }
   }
 
-  // Acciones / HUD
+  // ---------- Acciones / HUD ----------
   function endTurn(){
     players.forEach(p=>{ p.acted=true; p.mp=0; });
     seleccionado=null; celdasMovibles.clear(); distSel=null;
@@ -218,7 +202,7 @@
     acciones.appendChild(bTurn);
   }
 
-  // Ficha
+  // ---------- Ficha ----------
   function renderFicha(u){
     if(!u){ ficha.style.display="none"; ficha.innerHTML=""; return; }
     const pct = Math.max(0, Math.min(100, Math.round((u.hp/u.maxHp)*100)));
@@ -239,7 +223,7 @@
     ficha.style.display="block";
   }
 
-  // Movimiento
+  // ---------- Movimiento ----------
   function calcularCeldasMovibles(u){
     celdasMovibles.clear();
     distSel = Array.from({length:ROWS},()=>Array(COLS).fill(Infinity));
@@ -307,16 +291,14 @@
     }
   }
 
-  // FX (usan data-key; siempre en la casilla correcta)
+  // ---------- FX ----------
   function efectoAtaque(objetivo, cantidad, fuente){
     const celda = getCelda(objetivo.fila, objetivo.col);
     if(!celda) return;
     const flash = (fuente==='enemy')?'flash-enemy':'flash-player';
     celda.classList.add(flash); setTimeout(()=>celda.classList.remove(flash),280);
-
     const sprite = celda.querySelector('.fichaMiniImg');
     if (sprite){ sprite.classList.add('blink-hit'); setTimeout(()=>sprite.classList.remove('blink-hit'),600); }
-
     const dmg=document.createElement('div');
     dmg.className='dmg-float ' + (fuente==='enemy'?'dmg-enemy':'dmg-player');
     dmg.textContent=`-${cantidad}`; celda.appendChild(dmg);
@@ -336,7 +318,7 @@
     if(obj.hp<=0){ obj.vivo=false; efectoMuerte(obj); }
   }
 
-  // Validación objetivos
+  // ---------- Validación objetivos ----------
   function isAliveEnemyById(id){ return enemies.find(e=>e.id===id && e.vivo); }
   function isAlivePlayerByRef(p){ return players.includes(p) && p.vivo; }
   function stillInRange(attacker, target){
@@ -346,14 +328,12 @@
     return attacker.range.includes(d);
   }
 
-  // Combate jugador
+  // ---------- Combate jugador ----------
   function atacarUnidadA(u, objetivoRef){
     const objetivo = isAliveEnemyById(objetivoRef.id);
     if (!objetivo || !stillInRange(u, objetivo)) { botonesAccionesPara(u); return; }
-
     aplicarDanyo(objetivo, u.damage, 'player');
     renderFicha(objetivo);
-
     setTimeout(()=>{
       if(!objetivo.vivo){
         u.kills=(u.kills||0)+1;
@@ -372,15 +352,13 @@
 
   function comprobarCambioATurnoEnemigo(){
     if (players.every(p => !p.vivo || p.acted || p.mp===0)) {
-      setTurno("enemigo");
-      setTimeout(turnoIAEnemigos, 140);
+      setTurno("enemigo"); setTimeout(turnoIAEnemigos, 140);
     }
   }
 
-  // IA Enemiga
+  // ---------- IA Enemiga ----------
   function turnoIAEnemigos(){
     if (turno !== "enemigo") return;
-
     const vivosJ = players.filter(p=>p.vivo);
     if (vivosJ.length === 0) { setTurno("fin"); return; }
 
@@ -391,12 +369,9 @@
       // objetivo más cercano
       let objetivo = vivosJ[0];
       let mejor = manhattan(en, objetivo);
-      for (const p of vivosJ){
-        const d = manhattan(en, p);
-        if (d < mejor){ mejor = d; objetivo = p; }
-      }
+      for (const p of vivosJ){ const d = manhattan(en, p); if (d < mejor){ mejor = d; objetivo = p; } }
 
-      // moverse hasta 3 pasos evitando choques; no entrar en zona no jugable
+      // moverse hasta 3 pasos evitando choques y zona no jugable
       const step = (a,b)=> a<b?1:(a>b?-1:0);
       while (en.mp > 0){
         if (manhattan(en, objetivo) === 1) break;
@@ -413,20 +388,17 @@
         if(!moved) break;
       }
 
-      // Validar objetivo y atacar
       if (manhattan(en, objetivo) === 1 && isAlivePlayerByRef(objetivo)) {
         aplicarDanyo(objetivo, ENEMY_BASE_DAMAGE, 'enemy');
         renderFicha(objetivo);
       }
     }
 
-    // Fin de turno enemigo → vuelve al jugador
     players.forEach(p=>{ if(p.hp<=0) p.vivo=false; p.acted=false; p.mp = PLAYER_MAX_MP; });
     dibujarMapa();
 
-    if (players.every(p=>!p.vivo)) {
-      setTurno("fin");
-    } else {
+    if (players.every(p=>!p.vivo)) { setTurno("fin"); }
+    else {
       setTurno("jugador");
       if (enemies.every(e=>!e.vivo)) {
         if (fase === 1){ fase = 2; spawnFase(); dibujarMapa(); }
@@ -435,7 +407,77 @@
     }
   }
 
-  // Inicio + Portada + Diálogo + Lock orientación
+  // ---------- Typewriter + diálogo a dos personajes ----------
+  const dialogLines = [
+    { who:'knight', name:'Caballero', text:'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed vitae tortor vel ex congue pulvinar.' },
+    { who:'archer', name:'Arquera',   text:'Vivamus dignissim nisl a urna interdum, vel faucibus nunc fermentum. Proin sit amet mi ut sapien gravida.' },
+    { who:'knight', name:'Caballero', text:'Donec aliquet, turpis a porttitor volutpat, justo mi faucibus urna, sed volutpat nisl orci ac lorem.' },
+    { who:'archer', name:'Arquera',   text:'Todo listo. ¡Entremos en combate!' }
+  ];
+  let dlgIndex = 0;
+  let typing = false;
+  let typingTimer = null;
+
+  function setActiveSpeaker(){
+    const k = document.getElementById('charKnight');
+    const a = document.getElementById('charArcher');
+    const line = dialogLines[dlgIndex];
+    if (!line) return;
+    if (line.who === 'knight'){ k.style.opacity = '1'; a.style.opacity = '.6'; }
+    else { a.style.opacity = '1'; k.style.opacity = '.6'; }
+    document.getElementById('dialogName').textContent = line.name;
+  }
+
+  function typeWriter(text, el, speed=22){
+    typing = true;
+    el.textContent = '';
+    el.classList.add('type-cursor');
+    let i = 0;
+    function step(){
+      if (i <= text.length){
+        el.textContent = text.slice(0,i);
+        i++;
+        typingTimer = setTimeout(step, speed);
+      } else {
+        typing = false;
+        el.classList.remove('type-cursor');
+      }
+    }
+    step();
+  }
+
+  function showCurrentDialog(){
+    const line = dialogLines[dlgIndex];
+    const txtEl = document.getElementById('dialogText');
+    clearTimeout(typingTimer); typingTimer = null;
+    setActiveSpeaker();
+    typeWriter(line.text, txtEl);
+  }
+
+  function advanceDialog(){
+    const txtEl = document.getElementById('dialogText');
+    const line = dialogLines[dlgIndex];
+    if (typing){
+      // Completar instantáneamente
+      clearTimeout(typingTimer); typingTimer = null;
+      txtEl.textContent = line.text;
+      typing = false;
+      txtEl.classList.remove('type-cursor');
+      return;
+    }
+    // Siguiente línea o salir a juego
+    dlgIndex++;
+    if (dlgIndex >= dialogLines.length){
+      document.getElementById("dialogScene").style.display = "none";
+      document.getElementById("mapa").style.display = "grid";
+      setTurno("jugador");
+      applyOrientationLock();
+      return;
+    }
+    showCurrentDialog();
+  }
+
+  // ---------- Inicio ----------
   function init(){
     players = [ makeKnight(), makeArcher() ];
     ajustarTamanoTablero();
@@ -445,7 +487,7 @@
 
     btnContinuar.onclick = ()=>{ overlayWin.style.display="none"; location.reload(); };
 
-    // Portada
+    // Portada → Escena de diálogo
     const btnJugar = document.getElementById("btnJugar");
     const portada = document.getElementById("portada");
     const dialog = document.getElementById("dialogScene");
@@ -453,18 +495,12 @@
 
     btnJugar.onclick = ()=>{
       portada.style.display="none";
-      // Mostrar escena de diálogo
       dialog.style.display = "block";
-      applyOrientationLock(); // aplicar filtro si estuviera en horizontal
-    };
-
-    // Salir de la escena de diálogo hacia el juego
-    btnDialogNext.onclick = ()=>{
-      dialog.style.display = "none";
-      document.getElementById("mapa").style.display="grid";
-      setTurno("jugador");
+      dlgIndex = 0;
+      showCurrentDialog();
       applyOrientationLock();
     };
+    btnDialogNext.onclick = advanceDialog;
 
     // Bloqueo a vertical
     setupOrientationLock();
