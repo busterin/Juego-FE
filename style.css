@@ -12,6 +12,9 @@
   /* Altura del HUD en "filas" (≤ npRows) y desplazamiento hacia arriba */
   --hudRows: 1.6;
   --hudOffset: 2.2;   /* súbelo a 2.4 si lo quieres aún más arriba */
+
+  /* Fondo compartido */
+  --bg-url: url("assets/background.png");
 }
 
 * { box-sizing: border-box; }
@@ -22,12 +25,18 @@ body {
   margin: 0;
   height: 100dvh;
   min-height: -webkit-fill-available;
-  background: #000;
   color: #fff;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   padding-bottom: env(safe-area-inset-bottom);
+
+  /* 👇 Fondo de pantalla completa */
+  background-image: var(--bg-url);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: #000;
 }
 
 /* ---------- Portada ---------- */
@@ -42,9 +51,10 @@ body {
   z-index: 10000;
 }
 #portada .portada-img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;       /* rellena pantalla, aunque recorte */
+  object-position: center;
   pointer-events: none;
 }
 #portada .btn-jugar {
@@ -68,9 +78,25 @@ body {
 .overlay {
   position: fixed; inset: 0; z-index: 9999;
   display: grid; place-items: center;
-  backdrop-filter: blur(4px);
+
+  /* capa de color semitransparente + blur */
   background: rgba(0,0,0,.55);
+  backdrop-filter: blur(4px);
 }
+
+/* Fondo propio del overlay para evitar bandas negras */
+.overlay::before{
+  content: "";
+  position: absolute; inset: 0; z-index: -1;
+  background-image: var(--bg-url);
+  background-size: cover;      /* rellena toda la pantalla */
+  background-position: center;
+  background-repeat: no-repeat;
+  transform: scale(1.02);      /* ligero zoom para evitar bordes al hacer blur */
+  filter: brightness(0.9);     /* sutil oscurecido bajo la capa negra */
+}
+
+/* Caja de mensaje */
 .overlay-box{
   background: #101418;
   border: 1px solid rgba(255,255,255,.15);
@@ -113,9 +139,7 @@ body {
   user-select: none;
   touch-action: manipulation;
 
-  background-image: url("assets/background.png");
-  background-size: cover;
-  background-position: center;
+  /* 👇 quitamos background aquí para evitar “doble imagen” */
   border: 2px solid rgba(255,255,255,.15);
   border-radius: 10px;
   box-shadow: 0 8px 20px rgba(0,0,0,.3);
@@ -127,7 +151,6 @@ body {
   position: absolute;
   left: 0; right: 0;
 
-  /* Empieza (rows - hudRows - hudOffset) → más arriba sin cambiar el alto */
   top: calc(var(--cell) * (var(--rows) - var(--hudRows) - var(--hudOffset)));
   height: calc(var(--cell) * var(--hudRows));
 
