@@ -1,522 +1,525 @@
-/* build: dialogue-2chars */
-(function(){
-  // --- Dimensiones del tablero 9:16 ---
-  const ROWS = 16, COLS = 9;
-  const NON_PLAYABLE_BOTTOM_ROWS = 4;
-
-  // Parámetros
-  const PLAYER_MAX_MP = 5;
-  const ENEMY_MAX_MP  = 3;
-  const ENEMY_BASE_DAMAGE = 50;
-
-  // Estado
-  let turno = "jugador";
-  let fase = 1;
-  let enemies = [];
-  let players = [];
-  let seleccionado = null;
-  let celdasMovibles = new Set();
-  let distSel = null;
-
-  // ---------- Diálogos intro ----------
-  const dialogLines = [
-    { who:'knight', name:'Caballero', text:'Os doy la bienvenida a Tactic Heroes. Nuestro objetivo es derrotar al ejército rival.' },
-    { who:'archer', name:'Arquera',   text:'Seleccionar un personaje para ver su rango de movimiento y después elegir dónde colocarlo.' },
-    { who:'knight', name:'Caballero', text:'El caballero ataca si está adyacente al enemigo y la arquera a una casilla de distancia.' },
-    { who:'archer', name:'Arquera',   text:'Todo listo. ¡Entremos en combate!' }
-  ];
-  let dlgIndex = 0, typing=false, typeTimer=null, speakPopTimer=null;
-
-  // Unidades del jugador
-  const makeKnight = () => ({
-    id: "K", tipo: "caballero",
-    fila: Math.floor(ROWS*0.6), col: Math.floor(COLS*0.25),
-    vivo: true, nombre: "Caballero",
-    hp: 100, maxHp: 100,
-    retrato: "assets/player.png", nivel: 1, kills: 0,
-    damage: 50, range: [1], acted: false, mp: PLAYER_MAX_MP
-  });
-  const makeArcher = () => ({
-    id: "A", tipo: "arquera",
-    fila: Math.floor(ROWS*0.65), col: Math.floor(COLS*0.25),
-    vivo: true, nombre: "Arquera",
-    hp: 80, maxHp: 80,
-    retrato: "assets/archer.png", nivel: 1, kills: 0,
-    damage: 50, range: [2], acted: false, mp: PLAYER_MAX_MP
-  });
-
-  // DOM
-  const mapa = document.getElementById("mapa");
-  const acciones = document.getElementById("acciones");
-  const ficha = document.getElementById("ficha");
-  const overlayWin = document.getElementById("overlayWin");
-  const btnContinuar = document.getElementById("btnContinuar");
-  const turnBanner = document.getElementById("turnBanner");
-
-  // Portada + diálogo
-  const portada = document.getElementById("portada");
-  const btnJugar = document.getElementById("btnJugar");
-  const dialog = document.getElementById("dialogScene");
-  const dialogNameEl = document.getElementById("dialogName");
-  const dialogTextEl = document.getElementById("dialogText");
-  const btnDialogNext = document.getElementById("btnDialogNext");
-  const charKnight = document.getElementById("charKnight");
-  const charArcher = document.getElementById("charArcher");
-
-  // ---------- Banner turno ----------
-  function showTurnBanner(text){
-    turnBanner.textContent = text;
-    turnBanner.style.display = "block";
-    setTimeout(()=>{ turnBanner.style.display = "none"; }, 1300);
-  }
-  function setTurno(t){
-    turno = t;
-    showTurnBanner(t==="jugador" ? "TU TURNO" : t==="enemigo" ? "TURNO ENEMIGO" : "FIN DE PARTIDA");
-  }
-
-  // ---------- Layout ----------
-  function getUsableViewport(){
-    const w = Math.max(window.innerWidth || 0, document.documentElement.clientWidth || 0);
-    const h = Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0);
-    return { w, h };
-  }
-  function ajustarTamanoTablero(){
-    const { w:vw, h:vh } = getUsableViewport();
-    const pad = 12;
-    const cell = Math.max(28, Math.floor(Math.min((vw - pad)/COLS, (vh - pad)/ROWS)));
-    document.documentElement.style.setProperty('--cell', `${cell}px`);
-    document.documentElement.style.setProperty('--cols', COLS);
-    document.documentElement.style.setProperty('--rows', ROWS);
-    document.documentElement.style.setProperty('--npRows', NON_PLAYABLE_BOTTOM_ROWS);
-    mapa.style.width  = `${cell * COLS}px`;
-    mapa.style.height = `${cell * ROWS}px`;
-  }
-  window.addEventListener('resize', ajustarTamanoTablero);
-  window.addEventListener('orientationchange', ajustarTamanoTablero);
-  new ResizeObserver(()=>ajustarTamanoTablero()).observe(document.body);
-
-  // ---------- Bloqueo vertical ----------
-  function isLandscape(){ return window.innerWidth > window.innerHeight; }
-  function applyOrientationLock(){
-    const blocker = document.getElementById("orientationBlocker");
-    const enHorizontal = isLandscape();
-    blocker.style.display = enHorizontal ? "grid" : "none";
-    const dim = (el)=>{ if(!el) return; el.style.pointerEvents = enHorizontal ? "none" : "auto"; el.style.filter = enHorizontal ? "grayscale(1) blur(1.5px) brightness(.7)" : "none"; };
-    dim(portada); dim(dialog); dim(mapa);
-  }
-  function setupOrientationLock(){
-    applyOrientationLock();
-    window.addEventListener("resize", applyOrientationLock);
-    window.addEventListener("orientationchange", ()=> setTimeout(applyOrientationLock,100));
-  }
-
+(() => {
   // ---------- Utils ----------
-  const key = (f,c) => `${f},${c}`;
-  const dentro = (f,c) => f>=0 && f<ROWS && c>=0 && c<COLS;
-  const noJugable = (f) => f >= ROWS - NON_PLAYABLE_BOTTOM_ROWS;
-  const manhattan = (a,b) => Math.abs(a.fila-b.fila)+Math.abs(a.col-b.col);
-  const enLineaRecta = (a,b) => (a.fila===b.fila) || (a.col===b.col);
-  function getCelda(f,c){ return mapa.querySelector(`.celda[data-key="${f},${c}"]`); }
+  const $  = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
 
-  // ---------- Oleadas ----------
-  function spawnFase(){
-    enemies = [];
-    const count = (fase === 1) ? 3 : (fase === 2) ? 4 : 0;
-    if (count === 0) return;
-    const ocupadas = new Set(players.filter(p=>p.vivo).map(p=>key(p.fila,p.col)));
-    for (let i=0; i<count; i++){
-      let f,c;
-      do {
-        f = Math.floor(Math.random()*(ROWS - NON_PLAYABLE_BOTTOM_ROWS));
-        c = Math.floor(Math.random()*COLS);
-      } while (ocupadas.has(key(f,c)));
-      ocupadas.add(key(f,c));
-      enemies.push({
-        id:`E${Date.now()}-${i}`,
-        nombre:`Bandido ${i+1 + (fase===2?3:0)}`,
-        fila:f, col:c, vivo:true,
-        hp:50, maxHp:50,
-        retrato:"assets/enemy.png",
-        damage:ENEMY_BASE_DAMAGE,
-        mp: ENEMY_MAX_MP
-      });
-    }
-    if (turno==="jugador") players.forEach(p=>{ p.acted=false; p.mp=PLAYER_MAX_MP; });
+  const bump = (meterValueEl) => {
+    const meter = meterValueEl?.closest('.meter');
+    if(!meter) return;
+    meter.classList.remove('bump');
+    // reflow para reiniciar animación
+    void meter.offsetWidth;
+    meter.classList.add('bump');
+  };
+
+  // ---------- DOM ----------
+  const handEl = $('#hand');
+  const slotsPlayer = $$('.slot[data-side="player"]');
+  const slotsEnemy  = $$('.slot[data-side="enemy"]');
+
+  const roundNoEl = $('#roundNo');
+  const pCoinsEl = $('#pCoins'), eCoinsEl = $('#eCoins');
+  const pScoreEl = $('#pScore'), eScoreEl = $('#eScore');
+
+  const endOverlay = $('#endOverlay'); const endTitle = $('#endTitle'); const endLine = $('#endLine');
+  const zoomOverlay = $('#zoomOverlay'); const zoomWrap = $('#zoomCardWrap');
+
+  const againBtn = $('#againBtn');
+  const passBtn = $('#passBtn');
+  const resetBtn = $('#resetBtn');
+
+  // Splash
+  const startOv  = $('#startOverlay');
+  const startBtn = $('#startBtn');
+
+  // Overlays de robo/animación
+  const drawOverlay = $('#drawOverlay');
+  const drawCardEl  = $('#drawCard');
+
+  const turnToast = $('#turnToast');
+
+  // ---------- Estado ----------
+  const SLOTS = 3, HAND_SIZE = 4, MAX_ROUNDS = 8;
+  const state = {
+    round: 1, pCoins: 3, eCoins: 3, pScore: 0, eScore: 0,
+    pDeck: [], eDeck: [], pHand: [], eHand: [],
+    center: Array.from({length:SLOTS},()=>({p:null,e:null})),
+    turn: 'player', playerPassed:false, enemyPassed:false, resolving:false
+  };
+
+  // ---------- Cartas fijas ----------
+  const CARDS = [
+    { name:'Guerrera', art:'assets/Guerrera.PNG',  cost:3, pts:5, text:"Lidera la carga con fuerza indomable." },
+    { name:'Maga',     art:'assets/Maga.PNG',      cost:2, pts:4, text:"Canaliza energías arcanas a tu favor." },
+    { name:'Arquero',  art:'assets/Arquero.PNG',   cost:1, pts:3, text:"Dispara con precisión quirúrgica." },
+    { name:'Sanadora', art:'assets/Sanadora.PNG',  cost:2, pts:2, text:"Restaura y protege a los tuyos." },
+    { name:'Bardo',    art:'assets/Bardo.PNG',     cost:1, pts:2, text:"Inspira y desarma con melodías." }
+  ];
+
+  const tokenCost = v => `<div class="token t-cost" aria-label="Coste ${v}">${v}</div>`;
+  const tokenPts  = v => `<div class="token t-pts" aria-label="Puntos ${v}">${v}</div>`;
+  const artHTML = (src, alt='') => `<div class="art">${src?`<img src="${src}" alt="${alt}">`:''}</div>`;
+
+  // ---------- Limpieza de nodos temporales ----------
+  function purgeTransientNodes(){
+    document.querySelectorAll('.fly-card, .ghost').forEach(n=>n.remove());
+    if (drawOverlay) drawOverlay.classList.remove('visible');
   }
 
-  // ---------- Render ----------
-  function dibujarMapa(){
-    mapa.querySelectorAll(".celda").forEach(n=>n.remove());
-    for (let f=0; f<ROWS; f++){
-      for (let c=0; c<COLS; c++){
-        const celda = document.createElement("div");
-        celda.className = "celda";
-        celda.dataset.key = key(f,c);
-        if (noJugable(f)) celda.style.pointerEvents = "none";
-        if (seleccionado && celdasMovibles.has(key(f,c))) celda.classList.add("movible");
-        if (seleccionado && seleccionado.fila===f && seleccionado.col===c) celda.classList.add("seleccionada");
-
-        for (const p of players){
-          if (p.vivo && p.fila===f && p.col===c){
-            const img = document.createElement("img");
-            img.src = (p.tipo==="caballero") ? "assets/player.png" : "assets/archer.png";
-            img.alt = p.nombre;
-            img.className = "fichaMiniImg";
-            celda.appendChild(img);
-          }
-        }
-        for (const e of enemies){
-          if (e.vivo && e.fila===f && e.col===c){
-            const img = document.createElement("img");
-            img.src = "assets/enemy.png";
-            img.alt = e.nombre;
-            img.className = "fichaMiniImg";
-            celda.appendChild(img);
-          }
-        }
-
-        celda.addEventListener("click", ()=>manejarClick(f,c));
-        mapa.appendChild(celda);
-      }
-    }
-  }
-
-  // ---------- Acciones / HUD ----------
-  function endTurn(){
-    players.forEach(p=>{ p.acted=true; p.mp=0; });
-    seleccionado=null; celdasMovibles.clear(); distSel=null;
-    acciones.innerHTML="";
-    setTurno("enemigo");
-    setTimeout(turnoIAEnemigos, 140);
-  }
-
-  function botonesAccionesPara(unidad){
-    acciones.innerHTML="";
-    if (turno!=="jugador" || !unidad?.vivo) return;
-
-    const infoMp = document.createElement("div");
-    infoMp.textContent = `MP: ${unidad.mp}/${PLAYER_MAX_MP}`;
-    infoMp.style.marginRight = "6px";
-    infoMp.style.alignSelf = "center";
-    acciones.appendChild(infoMp);
-
-    enemigosEnRango(unidad).forEach(en=>{
-      const b=document.createElement("button");
-      b.className="primary";
-      b.textContent=`ATACAR ${en.nombre}`;
-      b.onclick=()=>atacarUnidadA(unidad,en);
-      acciones.appendChild(b);
-    });
-
-    const bTurn=document.createElement("button");
-    bTurn.textContent="Pasar turno";
-    bTurn.onclick=endTurn;
-    acciones.appendChild(bTurn);
-  }
-
-  // ---------- Ficha ----------
-  function renderFicha(u){
-    if(!u){ ficha.style.display="none"; ficha.innerHTML=""; return; }
-    const pct = Math.max(0, Math.min(100, Math.round((u.hp/u.maxHp)*100)));
-    const grad = (pct>50)?"linear-gradient(90deg,#2ecc71,#27ae60)":(pct>25)?"linear-gradient(90deg,#f1c40f,#e67e22)":"linear-gradient(90deg,#e74c3c,#c0392b)";
-    const extra = `· Daño <b>${u.damage}</b> · KOs <b>${u.kills}</b> · MP <b>${u.mp}</b>/${PLAYER_MAX_MP}`;
-    ficha.innerHTML = `
-      <div class="card">
-        <div class="portrait" style="background-image:url('${u.retrato}')"></div>
-        <div class="info">
-          <p class="name">${u.nombre}</p>
-          <p class="meta">${extra}</p>
-          <div class="hp">
-            <div class="bar"><span style="width:${pct}%; background:${grad}"></span></div>
-            <div class="value">${u.hp}/${u.maxHp} HP</div>
-          </div>
-        </div>
+  // ---------- Zoom ----------
+  function openZoom(card){
+    zoomWrap.innerHTML = `
+      <div class="zoom-card" role="dialog" aria-label="${card.name}">
+        <div class="art">${card.art?`<img src="${card.art}" alt="${card.name}">`:''}</div>
+        <div class="zoom-token cost" aria-label="Coste ${card.cost}">${card.cost}</div>
+        <div class="zoom-token pts" aria-label="Puntos ${card.pts}">${card.pts}</div>
+        <div class="name">${card.name}</div>
+        <div class="desc">${card.text}</div>
       </div>`;
-    ficha.style.display="block";
+    zoomOverlay.classList.add('visible');
   }
+  function closeZoom(){ zoomOverlay.classList.remove('visible'); }
+  zoomOverlay.addEventListener('click', e=>{ if(!e.target.closest('.zoom-card')) closeZoom(); });
 
-  // ---------- Movimiento ----------
-  function calcularCeldasMovibles(u){
-    celdasMovibles.clear();
-    distSel = Array.from({length:ROWS},()=>Array(COLS).fill(Infinity));
-    const q=[]; distSel[u.fila][u.col]=0; q.push([u.fila,u.col]);
-    const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
-    while(q.length){
-      const [f,c]=q.shift();
-      for(const [df,dc] of dirs){
-        const nf=f+df,nc=c+dc;
-        if(!dentro(nf,nc) || noJugable(nf)) continue;
-        const ocupado = enemies.some(e=>e.vivo&&e.fila===nf&&e.col===nc) ||
-                        players.some(p=>p.vivo&&p!==u&&p.fila===nf&&p.col===nc);
-        if(ocupado) continue;
-        const nd = distSel[f][c] + 1;
-        if(nd<=u.mp && nd<distSel[nf][nc]){ distSel[nf][nc]=nd; q.push([nf,nc]); }
+  // ---------- Espera imágenes ----------
+  function whenImagesReady(root, cb){
+    const imgs = Array.from(root.querySelectorAll('img'));
+    if (imgs.length === 0){ cb(); return; }
+    let remaining = imgs.length;
+    const done = () => { remaining--; if (remaining <= 0) cb(); };
+    imgs.forEach(img=>{
+      if (img.complete) { done(); }
+      else {
+        img.addEventListener('load', done, {once:true});
+        img.addEventListener('error', done, {once:true});
       }
-    }
-    for(let f=0;f<ROWS-NON_PLAYABLE_BOTTOM_ROWS;f++) for(let c=0;c<COLS;c++){
-      if(!(f===u.fila && c===u.col) && distSel[f][c]<=u.mp) celdasMovibles.add(`${f},${c}`);
-    }
-  }
-
-  function enemigosEnRango(u){
-    return enemies.filter(e=>{
-      if(!e.vivo) return false;
-      if(!enLineaRecta(u,e)) return false;
-      const d = Math.abs(u.fila-e.fila)+Math.abs(u.col-e.col);
-      return u.range.includes(d);
     });
   }
 
-  function manejarClick(f,c){
-    if (noJugable(f)) return;
+  // ---------- Layout Mano (anclada a 🐻 y 😈) ----------
+  function layoutHand(){
+    const n = handEl.children.length;
+    if (!n) return;
 
-    const pj = players.find(p=>p.vivo&&p.fila===f&&p.col===c);
-    const en = enemies.find(e=>e.vivo&&e.fila===f&&e.col===c);
-    if(pj) renderFicha(pj); else if(en) renderFicha(en);
+    const contRect = handEl.getBoundingClientRect();
+    const contW = handEl.clientWidth || contRect.width || window.innerWidth;
+    const cardW = handEl.children[0]?.getBoundingClientRect().width || 0;
+    if (!contW || !cardW) return;
 
-    if (turno!=="jugador") return;
+    const EDGE = 8;
+    const bearEl  = document.querySelector('.portrait.player .frame.hex');
+    const demonEl = document.querySelector('.portrait.enemy  .frame.hex');
 
-    if (pj){
-      if (pj.acted){ seleccionado=null; celdasMovibles.clear(); distSel=null; dibujarMapa(); acciones.innerHTML=""; return; }
-      seleccionado=pj; if (seleccionado.mp>0) calcularCeldasMovibles(seleccionado); else { celdasMovibles.clear(); distSel=null; }
-      dibujarMapa(); botonesAccionesPara(seleccionado); return;
+    // Centro 1ª carta (borde izq alineado a 🐻)
+    let startCenter = EDGE + cardW/2;
+    if (bearEl){
+      const bearLeftInHand = bearEl.getBoundingClientRect().left - contRect.left;
+      startCenter = Math.max(EDGE + cardW/2, bearLeftInHand + cardW/2);
     }
 
-    if (seleccionado){
-      if (f===seleccionado.fila && c===seleccionado.col){
-        seleccionado=null; celdasMovibles.clear(); distSel=null; dibujarMapa(); acciones.innerHTML=""; return;
-      }
-      const esAlcanzable = celdasMovibles.has(`${f},${c}`);
-      const ocupado = enemies.some(e=>e.vivo&&e.fila===f&&e.col===c) ||
-                      players.some(p=>p.vivo&&p!==seleccionado&&p.fila===f&&p.col===c);
-      if (esAlcanzable && !ocupado){
-        const coste = distSel[f][c] || 0;
-        seleccionado.fila=f; seleccionado.col=c;
-        seleccionado.mp = Math.max(0, seleccionado.mp - coste);
-        renderFicha(seleccionado);
-        if (seleccionado.mp>0){ calcularCeldasMovibles(seleccionado); }
-        else { celdasMovibles.clear(); distSel=null; }
-        dibujarMapa(); botonesAccionesPara(seleccionado);
-      } else {
-        botonesAccionesPara(seleccionado);
-      }
+    // Centro última carta (borde dcho alineado a 😈)
+    let endCenter = contW - EDGE - cardW/2;
+    if (demonEl){
+      const demonRightInHand = demonEl.getBoundingClientRect().right - contRect.left;
+      endCenter = Math.min(contW - EDGE - cardW/2, demonRightInHand - cardW/2);
     }
+
+    if (endCenter < startCenter) endCenter = startCenter;
+
+    // Distribución equiespaciada
+    const centers = [];
+    if (n === 1){
+      centers.push((startCenter + endCenter)/2);
+    } else {
+      const step = (endCenter - startCenter) / (n - 1);
+      for (let i=0;i<n;i++) centers.push(startCenter + i*step);
+    }
+
+    const mid = (n - 1) / 2;
+    [...handEl.children].forEach((el, i) => {
+      const cx = centers[i];
+      const tx = Math.round(cx - contW/2);
+      el.style.setProperty('--x', `${tx}px`);
+      el.style.setProperty('--off', `0px`);
+      el.style.setProperty('--rot', `${(i - mid) * 1.2}deg`);
+      el.style.zIndex = 10 + i;
+    });
+  }
+  function layoutHandSafe(){
+    layoutHand();
+    requestAnimationFrame(layoutHand);
+    setTimeout(layoutHand, 60);
+    whenImagesReady(handEl, layoutHand);
   }
 
-  // ---------- FX ----------
-  function efectoAtaque(objetivo, cantidad, fuente){
-    const celda = getCelda(objetivo.fila, objetivo.col);
-    if(!celda) return;
-    const flash = (fuente==='enemy')?'flash-enemy':'flash-player';
-    celda.classList.add(flash); setTimeout(()=>celda.classList.remove(flash),280);
-    const sprite = celda.querySelector('.fichaMiniImg');
-    if (sprite){ sprite.classList.add('blink-hit'); setTimeout(()=>sprite.classList.remove('blink-hit'),600); }
-    const dmg=document.createElement('div');
-    dmg.className='dmg-float ' + (fuente==='enemy'?'dmg-enemy':'dmg-player');
-    dmg.textContent=`-${cantidad}`; celda.appendChild(dmg);
-    setTimeout(()=>dmg.remove(),650);
+  // ---------- Mano ----------
+  function createHandCardEl(card,i,n){
+    const el=document.createElement('div');
+    el.className='card';
+    el.dataset.index=i; el.dataset.cost=card.cost; el.dataset.pts=card.pts;
+    el.dataset.name=card.name||''; el.dataset.art=card.art||''; el.dataset.text=card.text||'';
+    el.setAttribute('role','listitem');
+    el.setAttribute('aria-label', `${card.name}, coste ${card.cost}, ${card.pts} puntos`);
+    el.innerHTML=`
+      ${artHTML(card.art, card.name)}
+      ${tokenCost(card.cost)}${tokenPts(card.pts)}
+      <div class="name-top">${card.name||''}</div>
+      <div class="desc">${card.text||''}</div>
+    `;
+
+    // Evitar click fantasma tras drag
+    let dragged = false;
+    el.addEventListener('click', (ev)=> {
+      if (dragged) { dragged = false; return; } // no abrir zoom si fue drag
+      openZoom(card);
+    });
+
+    // Arrastre
+    attachDragHandlers(el, () => { dragged = true; });
+
+    return el;
   }
-  function efectoMuerte(unidad){
-    const celda = getCelda(unidad.fila, unidad.col);
-    if(!celda) return;
-    const sprite = celda.querySelector('.fichaMiniImg');
-    if (sprite){ sprite.classList.add('death-pop'); setTimeout(()=>{ if(sprite.parentNode) sprite.parentNode.removeChild(sprite); }, 360); }
-  }
-  function aplicarDanyo(obj,cant,fuente){
-    obj.hp=Math.max(0,obj.hp-cant);
-    efectoAtaque(obj,cant,fuente);
-    mapa.classList.add("shake");
-    setTimeout(()=>mapa.classList.remove("shake"), 400);
-    if(obj.hp<=0){ obj.vivo=false; efectoMuerte(obj); }
+  function renderHand(){
+    handEl.innerHTML='';
+    const n = state.pHand.length;
+    state.pHand.forEach((c,i)=> handEl.appendChild(createHandCardEl(c,i,n)));
+    layoutHandSafe();
   }
 
-  // ---------- Validación objetivos ----------
-  function isAliveEnemyById(id){ return enemies.find(e=>e.id===id && e.vivo); }
-  function isAlivePlayerByRef(p){ return players.includes(p) && p.vivo; }
-  function stillInRange(attacker, target){
-    if (!target?.vivo) return false;
-    if (!enLineaRecta(attacker, target)) return false;
-    const d = Math.abs(attacker.fila - target.fila) + Math.abs(attacker.col - target.col);
-    return attacker.range.includes(d);
-  }
-
-  // ---------- Combate jugador ----------
-  function atacarUnidadA(u, objetivoRef){
-    const objetivo = isAliveEnemyById(objetivoRef.id);
-    if (!objetivo || !stillInRange(u, objetivo)) { botonesAccionesPara(u); return; }
-    aplicarDanyo(objetivo, u.damage, 'player');
-    renderFicha(objetivo);
+  // ---------- Robo (vista grande + vuelo a mano) ----------
+  function showDrawLarge(card, cb){
+    drawCardEl.innerHTML = `
+      <div class="zoom-card" aria-label="Carta robada: ${card.name}">
+        <div class="art"><img src="${card.art}" alt="${card.name}"></div>
+        <div class="zoom-token cost">${card.cost}</div>
+        <div class="zoom-token pts">${card.pts}</div>
+        <div class="name">${card.name}</div>
+        <div class="desc">${card.text||''}</div>
+      </div>
+    `;
+    drawOverlay.classList.add('visible');
     setTimeout(()=>{
-      if(!objetivo.vivo){
-        u.kills=(u.kills||0)+1;
-        if (enemies.every(e=>!e.vivo)) {
-          if (fase === 1){ fase = 2; spawnFase(); dibujarMapa(); }
-          else if (fase === 2){ fase = 3; setTurno("fin"); overlayWin.style.display="grid"; }
-        }
-      }
-      u.acted = true; u.mp = 0;
-      seleccionado = null; celdasMovibles.clear(); distSel=null;
-      acciones.innerHTML="";
-      dibujarMapa();
-      comprobarCambioATurnoEnemigo();
-    }, 650);
+      drawOverlay.classList.remove('visible');
+      if(cb) setTimeout(cb, 250);
+    }, 900);
   }
 
-  function comprobarCambioATurnoEnemigo(){
-    if (players.every(p => !p.vivo || p.acted || p.mp===0)) {
-      setTurno("enemigo"); setTimeout(turnoIAEnemigos, 140);
-    }
+  function flyCardToHand(card, onDone){
+    const idx = state.pHand.length - 1;
+    const targetEl = handEl.children[idx];
+    if(!targetEl){ if(onDone) onDone(); return; }
+
+    const r = targetEl.getBoundingClientRect();
+    const targetX = r.left + r.width/2;
+    const targetY = r.top  + r.height/2;
+
+    targetEl.style.opacity = '0';
+
+    const fly = document.createElement('div');
+    fly.className = 'fly-card';
+    fly.innerHTML = `<div class="art"><img src="${card.art}" alt="${card.name}"></div>`;
+    document.body.appendChild(fly);
+
+    const startX = window.innerWidth/2;
+    const startY = window.innerHeight/2;
+
+    const flyW = parseFloat(getComputedStyle(fly).width);
+    const scale = r.width / flyW;
+
+    requestAnimationFrame(()=>{
+      requestAnimationFrame(()=>{
+        fly.style.transform = `translate(${targetX - startX}px, ${targetY - startY}px) scale(${scale})`;
+      });
+    });
+
+    setTimeout(()=>{
+      fly.remove();
+      targetEl.style.opacity = '';
+      layoutHandSafe();
+      if(onDone) onDone();
+    }, 500);
   }
 
-  // ---------- IA Enemiga ----------
-  function turnoIAEnemigos(){
-    if (turno !== "enemigo") return;
-    const vivosJ = players.filter(p=>p.vivo);
-    if (vivosJ.length === 0) { setTurno("fin"); return; }
+  function drawOneAnimated(done){
+    if(!state.pDeck.length){ if(done) done(); return; }
+    const card = state.pDeck.pop();
 
-    for (const en of enemies) {
-      if (!en.vivo) continue;
-      en.mp = ENEMY_MAX_MP;
-
-      // objetivo más cercano
-      let objetivo = vivosJ[0];
-      let mejor = manhattan(en, objetivo);
-      for (const p of vivosJ){ const d = manhattan(en, p); if (d < mejor){ mejor = d; objetivo = p; } }
-
-      // moverse hasta 3 pasos evitando choques y zona no jugable
-      const step = (a,b)=> a<b?1:(a>b?-1:0);
-      while (en.mp > 0){
-        if (manhattan(en, objetivo) === 1) break;
-        const cand = [];
-        if (en.fila !== objetivo.fila) cand.push([en.fila + step(en.fila, objetivo.fila), en.col]);
-        if (en.col  !== objetivo.col ) cand.push([en.fila, en.col + step(en.col,  objetivo.col )]);
-        let moved = false;
-        for (const [nf,nc] of cand){
-          if(!dentro(nf,nc) || noJugable(nf)) continue;
-          const ocupado = enemies.some(o=>o!==en && o.vivo && o.fila===nf && o.col===nc) ||
-                          players.some(p=>p.vivo && p.fila===nf && p.col===nc);
-          if(!ocupado){ en.fila=nf; en.col=nc; en.mp--; moved=true; break; }
-        }
-        if(!moved) break;
-      }
-
-      if (manhattan(en, objetivo) === 1 && isAlivePlayerByRef(objetivo)) {
-        aplicarDanyo(objetivo, ENEMY_BASE_DAMAGE, 'enemy');
-        renderFicha(objetivo);
-      }
-    }
-
-    players.forEach(p=>{ if(p.hp<=0) p.vivo=false; p.acted=false; p.mp = PLAYER_MAX_MP; });
-    dibujarMapa();
-
-    if (players.every(p=>!p.vivo)) { setTurno("fin"); }
-    else {
-      setTurno("jugador");
-      if (enemies.every(e=>!e.vivo)) {
-        if (fase === 1){ fase = 2; spawnFase(); dibujarMapa(); }
-        else if (fase === 2){ fase = 3; overlayWin.style.display="grid"; }
-      }
-    }
+    showDrawLarge(card, ()=>{
+      state.pHand.push(card);
+      renderHand();
+      requestAnimationFrame(()=> flyCardToHand(card, done));
+    });
   }
 
-  // ---------- Typewriter y escena de diálogo ----------
-  function clearPop(){ [charKnight, charArcher].forEach(el=>el && el.classList.remove('pop','speaking')); }
-  function setActiveSpeaker(){
-    clearTimeout(speakPopTimer);
-    const line = dialogLines[dlgIndex];
-    if (!line) return;
-
-    if (charKnight && charArcher){
-      charKnight.style.opacity = '.6';
-      charArcher.style.opacity = '.6';
-      if (line.who === 'knight'){ charKnight.style.opacity='1'; charKnight.classList.add('speaking'); }
-      else { charArcher.style.opacity='1'; charArcher.classList.add('speaking'); }
-      speakPopTimer = setTimeout(()=>{
-        if (line.who === 'knight'){ charKnight.classList.add('pop'); }
-        else { charArcher.classList.add('pop'); }
-      }, 500);
-    }
-
-    if (dialogNameEl) dialogNameEl.textContent = line.name;
-  }
-
-  function typeWriter(text, speed=22){
-    typing = true;
-    dialogTextEl.textContent = '';
-    dialogTextEl.classList.add('type-cursor');
-    let i = 0;
-    function step(){
-      if (i <= text.length){
-        dialogTextEl.textContent = text.slice(0,i);
-        i++;
-        typeTimer = setTimeout(step, speed);
-      } else {
-        typing = false;
-        dialogTextEl.classList.remove('type-cursor');
-      }
-    }
+  function topUpPlayerAnimated(done){
+    const step = () => {
+      if(state.pHand.length >= HAND_SIZE || !state.pDeck.length){ if(done) done(); return; }
+      drawOneAnimated(step);
+    };
     step();
   }
 
-  function showCurrentDialog(){
-    const line = dialogLines[dlgIndex];
-    if (!line) return;
-    setActiveSpeaker();
-    clearTimeout(typeTimer);
-    typeWriter(line.text);
+  // Enemigo roba sin animación
+  function topUpEnemyInstant(){
+    while(state.eHand.length < HAND_SIZE && state.eDeck.length){
+      state.eHand.push(state.eDeck.pop());
+    }
   }
 
-  function advanceDialog(){
-    if (!dialog) return;
-    const line = dialogLines[dlgIndex];
-    if (typing){
-      clearTimeout(typeTimer);
-      dialogTextEl.textContent = line.text;
-      typing = false;
-      dialogTextEl.classList.remove('type-cursor');
-      return;
+  // ---------- Tablero ----------
+  function renderBoard(){
+    for(let i=0;i<3;i++){
+      const ps=slotsPlayer[i], es=slotsEnemy[i];
+      if (!ps || !es) continue;
+      ps.innerHTML=''; es.innerHTML='';
+      const p=state.center[i].p, e=state.center[i].e;
+
+      ps.classList.toggle('occupied', !!p);
+      es.classList.toggle('occupied', !!e);
+
+      if(p){
+        const d=document.createElement('div');
+        d.className='placed';
+        d.setAttribute('aria-label', `${p.name} con ${p.pts} puntos`);
+        d.innerHTML = `${artHTML(p.art, p.name)}${tokenPts(p.pts)}<div class="name-top">${p.name}</div><div class="desc">${p.text}</div>`;
+        d.addEventListener('click', ()=> openZoom(p));
+        ps.appendChild(d);
+      }
+      if(e){
+        const d=document.createElement('div');
+        d.className='placed enemy';
+        d.setAttribute('aria-label', `${e.name} con ${e.pts} puntos`);
+        d.innerHTML = `${artHTML(e.art, e.name)}${tokenPts(e.pts)}<div class="name-top">${e.name}</div><div class="desc">${e.text}</div>`;
+        d.addEventListener('click', ()=> openZoom(e));
+        es.appendChild(d);
+      }
     }
-    dlgIndex++;
-    clearPop();
-    if (dlgIndex >= dialogLines.length){
-      dialog.style.display = "none";
-      mapa.style.display = "grid";
-      setTurno("jugador");
-      applyOrientationLock();
-      return;
-    }
-    showCurrentDialog();
   }
 
-  // ---------- Init ----------
-  function init(){
-    players=[makeKnight(),makeArcher()];
-    ajustarTamanoTablero(); spawnFase(); dibujarMapa();
-    if (btnContinuar) btnContinuar.onclick=()=>{ overlayWin.style.display="none"; location.reload(); };
+  // ---------- HUD ----------
+  function updateHUD(){
+    roundNoEl.textContent=state.round;
+    pCoinsEl.textContent=state.pCoins; eCoinsEl.textContent=state.eCoins;
+    pScoreEl.textContent=state.pScore; eScoreEl.textContent=state.eScore;
+  }
 
-    // Portada → Diálogo → Juego
-    if (btnJugar){
-      btnJugar.onclick = ()=>{
-        if (portada) portada.style.display = "none";
-        if (dialog){
-          dlgIndex = 0;
-          dialog.style.display = "block";
-          showCurrentDialog();
-        } else {
-          mapa.style.display = "grid";
-          setTurno("jugador");
-        }
-        applyOrientationLock();
+  // ---------- Drag & drop ----------
+  let ghost=null;
+  function attachDragHandlers(el, onDragMoveCb){ el.addEventListener('pointerdown', onDown, {passive:false});
+    function onDown(e){
+      if(state.turn!=='player'||state.resolving) return;
+      const src = e.currentTarget; src.setPointerCapture(e.pointerId); e.preventDefault();
+
+      ghost = document.createElement('div');
+      ghost.className = 'ghost';
+      ghost.innerHTML = `${artHTML(src.dataset.art, src.dataset.name||'')}${tokenCost(src.dataset.cost)}${tokenPts(src.dataset.pts)}<div class="name-top">${src.dataset.name||''}</div><div class="desc">${src.dataset.text||''}</div>`;
+      document.body.appendChild(ghost);
+      moveGhost(e.clientX, e.clientY);
+
+      const move = ev => { ev.preventDefault(); moveGhost(ev.clientX, ev.clientY); onDragMoveCb && onDragMoveCb(); };
+      const finish = ev => {
+        try { src.releasePointerCapture(e.pointerId); } catch(_) {}
+        window.removeEventListener('pointermove', move, {passive:false});
+        window.removeEventListener('pointerup', finish, true);
+        window.removeEventListener('pointercancel', finish, true);
+
+        const lane = laneUnder(ev.clientX, ev.clientY);
+        if(lane !== -1) tryPlayFromHandToSlot(+src.dataset.index, lane);
+
+        if (ghost) { ghost.remove(); ghost = null; }
+        layoutHandSafe();
       };
-    } else {
-      // fallback si no hubiera portada
-      mapa.style.display = "grid";
-      setTurno("jugador");
+
+      window.addEventListener('pointermove', move, {passive:false});
+      window.addEventListener('pointerup', finish, {passive:false, capture:true});
+      window.addEventListener('pointercancel', finish, {passive:false, capture:true});
+    }
+  }
+  const moveGhost=(x,y)=>{ if(!ghost) return; ghost.style.left=x+'px'; ghost.style.top=y+'px'; }
+  function laneUnder(x,y){
+    for(let i=0;i<3;i++){
+      const el = document.querySelector(`.slot[data-side="player"][data-lane="${i}"]`);
+      if(!el) continue;
+      const r = el.getBoundingClientRect();
+      if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom) return i;
+    }
+    return -1;
+  }
+
+  // ---------- Toast ----------
+  let toastTimer=null;
+  function showTurnToast(text, ms=1200, variant='normal'){
+    if(!turnToast) return;
+    turnToast.textContent = text;
+    turnToast.classList.toggle('warn', variant==='warn');
+    turnToast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=> turnToast.classList.remove('show'), ms);
+  }
+
+  // ---------- Reglas ----------
+  const canAfford = c => state.pCoins>=c.cost;
+
+  function insufficientFeedback(handIndex){
+    const el = handEl.children[handIndex];
+    if(el){
+      el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
+    }
+    showTurnToast('Monedas insuficientes', 900, 'warn');
+  }
+
+  function tryPlayFromHandToSlot(handIndex, slotIndex){
+    if(handIndex<0||handIndex>=state.pHand.length) return;
+    const card=state.pHand[handIndex];
+
+    // no pisar carta ya colocada
+    if (state.center[slotIndex].p) return;
+
+    if(!canAfford(card)) { insufficientFeedback(handIndex); return; }
+
+    state.pCoins -= card.cost;
+    state.center[slotIndex].p = {...card};
+    state.pHand.splice(handIndex,1);
+    renderHand(); renderBoard(); updateHUD();
+    bump(pCoinsEl);
+
+    // robar si hay mazo
+    if(state.pDeck.length){
+      drawOneAnimated(()=>{ renderHand(); updateHUD(); });
+    }
+  }
+
+  // ---------- IA rival (contrarresta tu línea más fuerte si puede) ----------
+  function enemyTurn(){
+    state.resolving=true; state.enemyPassed=false;
+    updateHUD();
+    showTurnToast('TURNO RIVAL');
+
+    const canPlay=()=> state.eHand.some(c=>c.cost<=state.eCoins);
+
+    function pickBestCardIndex(){
+      let best=-1,score=-1;
+      state.eHand.forEach((c,i)=>{ if(c.cost<=state.eCoins){ const s=c.pts*2-c.cost; if(s>score){score=s; best=i;} }});
+      return best;
     }
 
-    if (btnDialogNext) btnDialogNext.onclick = advanceDialog;
+    function pickBestLane(){
+      let bestLane = -1, bestPts = -1;
+      for(let i=0;i<SLOTS;i++){
+        const lane = state.center[i];
+        if(!lane.e && lane.p){
+          if(lane.p.pts > bestPts){ bestPts = lane.p.pts; bestLane = i; }
+        }
+      }
+      if(bestLane !== -1) return bestLane;
+      for(let i=0;i<SLOTS;i++){ if(!state.center[i].e) return i; }
+      return -1;
+    }
 
-    setupOrientationLock();
+    const tryPlayOnce=()=>{
+      if(!canPlay()) return false;
+
+      const bestIdx = pickBestCardIndex();
+      if(bestIdx === -1) return false;
+
+      const target = pickBestLane();
+      if(target===-1) return false;
+
+      const card = state.eHand[bestIdx];
+      state.eCoins -= card.cost;
+      state.center[target].e = {...card};
+      state.eHand.splice(bestIdx,1);
+
+      if(state.eDeck.length) state.eHand.push(state.eDeck.pop());
+
+      renderBoard(); updateHUD(); bump(eCoinsEl);
+      return true;
+    };
+
+    const loop=()=>{ if(!tryPlayOnce()){ state.enemyPassed=true; setTimeout(()=>{state.resolving=false; checkBothPassedThenScore();},500); return; } setTimeout(loop,220); };
+    loop();
   }
-  init();
+
+  // ---------- Fin de partida / Puntuación ----------
+  function endGame(){
+    state.resolving = true;
+    let title = 'Empate';
+    if(state.pScore > state.eScore) title = '¡Victoria!';
+    else if(state.eScore > state.pScore) title = 'Derrota';
+    endTitle.textContent = title;
+    endLine.textContent = `Puntos — Tú: ${state.pScore} · Rival: ${state.eScore}`;
+    endOverlay.classList.add('visible');
+  }
+  const bothPassed=()=> state.playerPassed && state.enemyPassed;
+
+  function scoreTurn(){
+    // Sumar puntos del tablero actual (las cartas permanecen en mesa)
+    let p=0,e=0; state.center.forEach(c=>{ if(c.p) p+=c.p.pts; if(c.e) e+=c.e.pts; });
+    state.pScore+=p; state.eScore+=e; updateHUD();
+    bump(pScoreEl); bump(eScoreEl);
+
+    // ❗ Ya no se limpia el tablero: las cartas se mantienen y puntúan cada ronda
+    // state.center = Array.from({length:3},()=>({p:null,e:null}));
+    // renderBoard();
+
+    if(state.round === MAX_ROUNDS){ setTimeout(endGame, 300); return; }
+
+    // Avanzar ronda
+    state.round+=1; state.playerPassed=false; state.enemyPassed=false; state.turn='player';
+
+    // +1 monedas para ambos al inicio de ronda
+    state.pCoins+=1; state.eCoins+=1; updateHUD();
+    bump(pCoinsEl); bump(eCoinsEl);
+
+    // Relleno manos: enemigo instantáneo, jugador animado
+    topUpEnemyInstant();
+    topUpPlayerAnimated(()=>{
+      renderHand(); layoutHandSafe(); updateHUD();
+      setTimeout(()=> showTurnToast('TU TURNO'), 200);
+    });
+  }
+  function checkBothPassedThenScore(){ if(bothPassed()) scoreTurn(); }
+
+  // ---------- Nueva partida ----------
+  function newGame(){
+    purgeTransientNodes();
+
+    state.round=1; state.pCoins=3; state.eCoins=3; state.pScore=0; state.eScore=0;
+    state.playerPassed=false; state.enemyPassed=false; state.turn='player';
+    state.center=Array.from({length:3},()=>({p:null,e:null}));
+    state.pDeck = [...CARDS].sort(()=> Math.random()-0.5);
+    state.eDeck = [...CARDS].sort(()=> Math.random()-0.5);
+    state.pHand=[]; state.eHand=[];
+    renderBoard(); renderHand(); updateHUD();
+
+    // Relleno inicial
+    topUpEnemyInstant();
+    topUpPlayerAnimated(()=>{
+      renderHand(); layoutHandSafe(); updateHUD();
+      showTurnToast('TU TURNO');
+    });
+  }
+
+  // ---------- Eventos ----------
+  againBtn.addEventListener('click', ()=>{ endOverlay.classList.remove('visible'); newGame(); });
+  resetBtn.addEventListener('click', ()=> newGame());
+  passBtn.addEventListener('click', ()=>{
+    if(state.turn!=='player'||state.resolving) return;
+    state.playerPassed=true; state.turn='enemy'; enemyTurn();
+  });
+
+  window.addEventListener('resize', ()=>{ layoutHandSafe(); purgeTransientNodes(); });
+  window.addEventListener('orientationchange', ()=>{ layoutHandSafe(); purgeTransientNodes(); });
+
+  // Arranque con portada
+  window.addEventListener('DOMContentLoaded', ()=>{
+    if(startBtn){
+      startBtn.addEventListener('click', ()=>{
+        startOv.classList.remove('visible');
+        newGame();
+      });
+    }else{
+      newGame();
+    }
+  });
 })();
