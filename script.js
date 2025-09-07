@@ -2,12 +2,10 @@
   // ---------- Utils ----------
   const $  = s => document.querySelector(s);
   const $$ = s => Array.from(document.querySelectorAll(s));
-
   const bump = (meterValueEl) => {
     const meter = meterValueEl?.closest('.meter');
     if(!meter) return;
     meter.classList.remove('bump');
-    // reflow para reiniciar animación
     void meter.offsetWidth;
     meter.classList.add('bump');
   };
@@ -28,15 +26,12 @@
   const passBtn = $('#passBtn');
   const resetBtn = $('#resetBtn');
 
-  // Splash
   const startOv  = $('#startOverlay');
   const startBtn = $('#startBtn');
 
-  // Overlays de robo/animación
   const drawOverlay = $('#drawOverlay');
   const drawCardEl  = $('#drawCard');
-
-  const turnToast = $('#turnToast');
+  const turnToast   = $('#turnToast');
 
   // ---------- Estado ----------
   const SLOTS = 3, HAND_SIZE = 4, MAX_ROUNDS = 8;
@@ -96,7 +91,7 @@
     });
   }
 
-  // ---------- Layout Mano (anclada a 🐻 y 😈) ----------
+  // ---------- Layout Mano ----------
   function layoutHand(){
     const n = handEl.children.length;
     if (!n) return;
@@ -110,23 +105,19 @@
     const bearEl  = document.querySelector('.portrait.player .frame.hex');
     const demonEl = document.querySelector('.portrait.enemy  .frame.hex');
 
-    // Centro 1ª carta (borde izq alineado a 🐻)
     let startCenter = EDGE + cardW/2;
     if (bearEl){
       const bearLeftInHand = bearEl.getBoundingClientRect().left - contRect.left;
       startCenter = Math.max(EDGE + cardW/2, bearLeftInHand + cardW/2);
     }
 
-    // Centro última carta (borde dcho alineado a 😈)
     let endCenter = contW - EDGE - cardW/2;
     if (demonEl){
       const demonRightInHand = demonEl.getBoundingClientRect().right - contRect.left;
       endCenter = Math.min(contW - EDGE - cardW/2, demonRightInHand - cardW/2);
     }
-
     if (endCenter < startCenter) endCenter = startCenter;
 
-    // Distribución equiespaciada
     const centers = [];
     if (n === 1){
       centers.push((startCenter + endCenter)/2);
@@ -170,13 +161,11 @@
     // Evitar click fantasma tras drag
     let dragged = false;
     el.addEventListener('click', (ev)=> {
-      if (dragged) { dragged = false; return; } // no abrir zoom si fue drag
+      if (dragged) { dragged = false; return; }
       openZoom(card);
     });
 
-    // Arrastre
     attachDragHandlers(el, () => { dragged = true; });
-
     return el;
   }
   function renderHand(){
@@ -259,7 +248,6 @@
     step();
   }
 
-  // Enemigo roba sin animación
   function topUpEnemyInstant(){
     while(state.eHand.length < HAND_SIZE && state.eDeck.length){
       state.eHand.push(state.eDeck.pop());
@@ -305,7 +293,8 @@
 
   // ---------- Drag & drop ----------
   let ghost=null;
-  function attachDragHandlers(el, onDragMoveCb){ el.addEventListener('pointerdown', onDown, {passive:false});
+  function attachDragHandlers(el, onDragMoveCb){
+    el.addEventListener('pointerdown', onDown, {passive:false});
     function onDown(e){
       if(state.turn!=='player'||state.resolving) return;
       const src = e.currentTarget; src.setPointerCapture(e.pointerId); e.preventDefault();
@@ -372,24 +361,20 @@
     if(handIndex<0||handIndex>=state.pHand.length) return;
     const card=state.pHand[handIndex];
 
-    // no pisar carta ya colocada
-    if (state.center[slotIndex].p) return;
-
+    if (state.center[slotIndex].p) return; // no pisar carta propia
     if(!canAfford(card)) { insufficientFeedback(handIndex); return; }
 
     state.pCoins -= card.cost;
     state.center[slotIndex].p = {...card};
     state.pHand.splice(handIndex,1);
-    renderHand(); renderBoard(); updateHUD();
-    bump(pCoinsEl);
+    renderHand(); renderBoard(); updateHUD(); bump(pCoinsEl);
 
-    // robar si hay mazo
     if(state.pDeck.length){
       drawOneAnimated(()=>{ renderHand(); updateHUD(); });
     }
   }
 
-  // ---------- IA rival (contrarresta tu línea más fuerte si puede) ----------
+  // ---------- IA rival ----------
   function enemyTurn(){
     state.resolving=true; state.enemyPassed=false;
     updateHUD();
@@ -458,7 +443,7 @@
     state.pScore+=p; state.eScore+=e; updateHUD();
     bump(pScoreEl); bump(eScoreEl);
 
-    // ❗ Ya no se limpia el tablero: las cartas se mantienen y puntúan cada ronda
+    // ❌ NO limpiar tablero aquí: deben seguir en mesa y puntuar cada ronda
     // state.center = Array.from({length:3},()=>({p:null,e:null}));
     // renderBoard();
 
@@ -471,7 +456,7 @@
     state.pCoins+=1; state.eCoins+=1; updateHUD();
     bump(pCoinsEl); bump(eCoinsEl);
 
-    // Relleno manos: enemigo instantáneo, jugador animado
+    // Robo
     topUpEnemyInstant();
     topUpPlayerAnimated(()=>{
       renderHand(); layoutHandSafe(); updateHUD();
@@ -483,16 +468,17 @@
   // ---------- Nueva partida ----------
   function newGame(){
     purgeTransientNodes();
-
     state.round=1; state.pCoins=3; state.eCoins=3; state.pScore=0; state.eScore=0;
     state.playerPassed=false; state.enemyPassed=false; state.turn='player';
+
+    // 🔄 Solo aquí se limpia el tablero:
     state.center=Array.from({length:3},()=>({p:null,e:null}));
+
     state.pDeck = [...CARDS].sort(()=> Math.random()-0.5);
     state.eDeck = [...CARDS].sort(()=> Math.random()-0.5);
     state.pHand=[]; state.eHand=[];
     renderBoard(); renderHand(); updateHUD();
 
-    // Relleno inicial
     topUpEnemyInstant();
     topUpPlayerAnimated(()=>{
       renderHand(); layoutHandSafe(); updateHUD();
@@ -511,7 +497,7 @@
   window.addEventListener('resize', ()=>{ layoutHandSafe(); purgeTransientNodes(); });
   window.addEventListener('orientationchange', ()=>{ layoutHandSafe(); purgeTransientNodes(); });
 
-  // Arranque con portada
+  // Arranque
   window.addEventListener('DOMContentLoaded', ()=>{
     if(startBtn){
       startBtn.addEventListener('click', ()=>{
