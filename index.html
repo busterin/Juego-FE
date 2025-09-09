@@ -1,106 +1,70 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-  <title>Cartas — Coste & Puntos</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8" />
+  <title>TACTIC HEROES</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#101418">
+
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="preload" as="image" href="assets/player.png">
+  <link rel="preload" as="image" href="assets/archer.png">
+  <link rel="preload" as="image" href="assets/enemy.png">
+
+  <link rel="stylesheet" href="style.css?v=dialogue-2chars-fixed">
 </head>
 <body>
-  <!-- Portada a pantalla completa -->
-  <div id="startOverlay" class="splash visible" aria-hidden="false">
-    <div class="splash-cover" role="img" aria-label="Portada del juego">
-      <button id="startBtn" class="btn start" aria-label="Empezar partida">JUGAR ▶</button>
+
+  <!-- Bloqueo por orientación horizontal -->
+  <div id="orientationBlocker" style="display:none">
+    <div class="obx">
+      <p>Gira el dispositivo para jugar en vertical</p>
     </div>
   </div>
 
-  <main id="game" aria-label="Cartas de coste y puntos">
-    <!-- HUD superior -->
-    <header class="top-hud">
-      <div class="portrait player" aria-label="Panel del jugador">
-        <div class="frame hex" aria-hidden="true">🐻</div>
-        <div class="info">
-          <div class="name">JUGADOR</div>
-          <div class="meters" aria-live="polite">
-            <span class="meter coin" aria-label="Monedas del jugador"><span class="value" id="pCoins">3</span></span>
-            <span class="meter pts" aria-label="Puntos del jugador"><span class="value" id="pScore">0</span></span>
-          </div>
-        </div>
-      </div>
+  <!-- Portada -->
+  <div id="portada">
+    <img src="assets/Portada.PNG" alt="Portada Tactic Heroes" class="portada-img">
+    <button id="btnJugar" class="btn-jugar">JUGAR</button>
+  </div>
 
-      <div class="round-display" aria-label="Ronda actual">
-        <div id="roundNo" class="round-no" aria-live="polite">1</div>
-      </div>
+  <!-- Escena de diálogo (2 personajes + typewriter) -->
+  <div id="dialogScene" style="display:none">
+    <div class="dialog-bg"></div>
 
-      <div class="portrait enemy" aria-label="Panel del rival">
-        <div class="frame hex" aria-hidden="true">😈</div>
-        <div class="info">
-          <div class="name">RIVAL</div>
-          <div class="meters" aria-live="polite">
-            <span class="meter coin" aria-label="Monedas del rival"><span class="value" id="eCoins">3</span></span>
-            <span class="meter pts" aria-label="Puntos del rival"><span class="value" id="eScore">0</span></span>
-          </div>
-        </div>
-      </div>
-    </header>
+    <!-- Personajes -->
+    <img class="dialog-char left"  id="charKnight" src="assets/player.png"  alt="Caballero">
+    <img class="dialog-char right" id="charArcher" src="assets/archer.png" alt="Arquera">
 
-    <!-- Tablero (2 filas de 3) -->
-    <section class="board" aria-label="Tablero central">
-      <div class="row row-enemy">
-        <div class="lanes lanes-3 enemy">
-          <div class="slot enemy" data-side="enemy" data-lane="0" aria-label="Casilla rival 1"></div>
-          <div class="slot enemy" data-side="enemy" data-lane="1" aria-label="Casilla rival 2"></div>
-          <div class="slot enemy" data-side="enemy" data-lane="2" aria-label="Casilla rival 3"></div>
-        </div>
-      </div>
-      <div class="row row-player">
-        <div class="lanes lanes-3">
-          <div class="slot" data-side="player" data-lane="0" aria-label="Tu casilla 1"></div>
-          <div class="slot" data-side="player" data-lane="1" aria-label="Tu casilla 2"></div>
-          <div class="slot" data-side="player" data-lane="2" aria-label="Tu casilla 3"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Mano -->
-    <section class="hand-zone" aria-label="Tu mano de cartas">
-      <div id="hand" class="hand" role="list"></div>
-    </section>
-
-    <!-- Barra inferior -->
-    <footer class="bottom-bar">
-      <button id="passBtn" class="btn primary" aria-label="Pasar turno">PASAR TURNO</button>
-      <button id="resetBtn" class="btn" aria-label="Reiniciar partida">Reiniciar</button>
-    </footer>
-  </main>
-
-  <!-- Fin de partida -->
-  <div id="endOverlay" class="overlay" role="dialog" aria-live="polite" aria-label="Resultado de la partida">
-    <div class="panel">
-      <h2 id="endTitle">Resultado</h2>
-      <p id="endLine" class="muted"></p>
-      <div class="row-btns">
-        <button id="againBtn" class="btn" aria-label="Jugar de nuevo">Jugar de nuevo</button>
+    <!-- Caja de diálogo -->
+    <div class="dialog-box">
+      <div class="dialog-name" id="dialogName">Caballero</div>
+      <div class="dialog-text" id="dialogText" aria-live="polite"></div>
+      <div class="dialog-cta">
+        <button id="btnDialogNext" class="primary small" aria-label="Continuar diálogo">Continuar</button>
       </div>
     </div>
   </div>
 
-  <!-- Zoom carta -->
-  <div id="zoomOverlay" class="overlay" role="dialog" aria-modal="true" aria-label="Detalle de carta">
-    <div class="zoom-panel">
-      <div id="zoomCardWrap"></div>
+  <!-- Overlay NIVEL COMPLETADO -->
+  <div id="overlayWin" class="overlay" style="display:none">
+    <div class="overlay-box">
+      <h1>NIVEL COMPLETADO</h1>
+      <button id="btnContinuar" class="primary">Continuar</button>
     </div>
   </div>
 
-  <!-- Toast de turno / avisos -->
-  <div id="turnToast" class="turn-toast" aria-live="polite"></div>
+  <!-- Banner de turno superpuesto -->
+  <div id="turnBanner" class="turn-banner" style="display:none" aria-live="polite">TU TURNO</div>
 
-  <!-- Overlay de robo (carta al centro) -->
-  <div id="drawOverlay" class="draw-overlay" aria-hidden="true">
-    <div id="drawCard" class="draw-card"></div>
+  <!-- Tablero (9x16) + HUD dentro -->
+  <div id="mapa" style="display:none">
+    <div id="hud">
+      <div id="ficha"></div>
+      <div id="acciones"></div>
+    </div>
   </div>
 
-  <!-- 👇 cache-busting para asegurarnos de cargar la última versión -->
-  <script src="script.js?v=keepboard"></script>
+  <script src="script.js?v=dialogue-2chars-fixed"></script>
 </body>
 </html>
