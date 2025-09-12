@@ -1,1 +1,59 @@
-<!DOCTYPE html> <html lang="es"> <head> <meta charset="UTF-8" /> <title>TACTIC HEROES</title> <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /> <link rel="manifest" href="manifest.webmanifest"> <link rel="stylesheet" href="style.css?v=dialogue-2chars"> </head> <body> <!-- Bloqueo por orientación horizontal --> <div id="orientationBlocker" style="display:none"> <div class="obx"> <p>Gira el dispositivo para jugar en vertical</p> </div> </div> <!-- Portada --> <div id="portada"> <img src="assets/Portada.PNG" alt="Portada Tactic Heroes" class="portada-img"> <button id="btnJugar" class="btn-jugar">JUGAR</button> </div> <!-- Escena de diálogo (2 personajes + typewriter) --> <div id="dialogScene" style="display:none"> <div class="dialog-bg"></div> <!-- Personajes --> <img class="dialog-char left" id="charKnight" src="assets/player.png" alt="Caballero"> <img class="dialog-char right" id="charArcher" src="assets/archer.png" alt="Arquera"> <!-- Caja de diálogo --> <div class="dialog-box"> <div class="dialog-name" id="dialogName">Caballero</div> <div class="dialog-text" id="dialogText"></div> <div class="dialog-cta"> <button id="btnDialogNext" class="primary small">Continuar</button> </div> </div> </div> <!-- Overlay NIVEL COMPLETADO --> <div id="overlayWin" class="overlay" style="display:none"> <div class="overlay-box"> <h1>NIVEL COMPLETADO</h1> <button id="btnContinuar" class="primary">Continuar</button> </div> </div> <!-- Banner de turno superpuesto --> <div id="turnBanner" class="turn-banner" style="display:none">TU TURNO</div> <!-- Tablero (9x16) + HUD dentro --> <div id="mapa" style="display:none"> <div id="hud"> <div id="ficha"></div> <div id="acciones"></div> </div> </div> <script src="script.js?v=dialogue-2chars"></script> </body> </html>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>TACTIC HEROES</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="style.css?v=landscape-16x9">
+</head>
+<body>
+  <!-- Bloqueo por orientación vertical (juego horizontal) -->
+  <div id="orientationBlocker" style="display:none">
+    <div class="obx">
+      <p>Gira el dispositivo para jugar en horizontal</p>
+    </div>
+  </div>
+
+  <!-- Portada -->
+  <div id="portada">
+    <img src="assets/Portada.PNG" alt="Portada Tactic Heroes" class="portada-img">
+    <button id="btnJugar" class="btn-jugar">JUGAR</button>
+  </div>
+
+  <!-- Escena de diálogo (2 personajes + typewriter) -->
+  <div id="dialogScene" style="display:none">
+    <div class="dialog-bg"></div>
+    <img class="dialog-char left"  id="charKnight" alt="Caballero">
+    <img class="dialog-char right" id="charArcher" alt="Arquera">
+    <div class="dialog-box">
+      <div class="dialog-name" id="dialogName">Caballero</div>
+      <div class="dialog-text" id="dialogText"></div>
+      <div class="dialog-cta">
+        <button id="btnDialogNext" class="primary small">Continuar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overlay NIVEL COMPLETADO -->
+  <div id="overlayWin" class="overlay" style="display:none">
+    <div class="overlay-box">
+      <h1>NIVEL COMPLETADO</h1>
+      <button id="btnContinuar" class="primary">Continuar</button>
+    </div>
+  </div>
+
+  <!-- Banner de turno -->
+  <div id="turnBanner" class="turn-banner" style="display:none">TU TURNO</div>
+
+  <!-- Tablero (16x9) -->
+  <div id="mapa" style="display:none">
+    <div id="hud">
+      <div id="ficha"></div>
+      <div id="acciones"></div>
+    </div>
+  </div>
+
+  <script src="script.js?v=landscape-16x9"></script>
+</body>
+</html>
