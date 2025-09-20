@@ -451,19 +451,41 @@
 
   // ---------- Combate jugador ----------
   function atacarUnidadA(u, objetivoRef){
-    const objetivo = isAliveEnemyById(objetivoRef.id);
-    if (!objetivo || !stillInRange(u, objetivo)) { botonesAccionesPara(u); return; }
-    aplicarDanyo(objetivo, u.damage, 'player');
-    renderFicha(objetivo);
-    setTimeout(()=>{
-      if(!objetivo.vivo){ u.kills=(u.kills||0)+1; }
-      u.acted = true; u.mp = 0;
-      seleccionado = null; celdasMovibles.clear(); distSel=null;
-      acciones.innerHTML="";
-      dibujarMapa();
-      comprobarCambioATurnoEnemigo();
-    }, 650);
-  }
+  const objetivo = isAliveEnemyById(objetivoRef.id);
+  if (!objetivo || !stillInRange(u, objetivo)) { botonesAccionesPara(u); return; }
+
+  aplicarDanyo(objetivo, u.damage, 'player');
+  renderFicha(objetivo);
+
+  setTimeout(()=>{
+    if(!objetivo.vivo){ u.kills=(u.kills||0)+1; }
+
+    u.acted = true; 
+    u.mp = 0;
+    seleccionado = null; 
+    celdasMovibles.clear(); 
+    distSel=null;
+    acciones.innerHTML="";
+
+    // 👇 NUEVO: si se termina una oleada/level durante el turno del jugador
+    if (gameMode==="skirmish" && enemies.every(e=>!e.vivo)) {
+      if (fase === 1){
+        fase = 2;
+        spawnFase();
+        dibujarMapa();
+      } else if (fase === 2){
+        fase = 3;
+        nextMode = "rescue";                 // << activar paso a RESCATE
+        overlayWin.querySelector("h1").textContent = "NIVEL COMPLETADO";
+        overlayWin.style.display = "grid";
+      }
+      return; // importante: no continuar el flujo normal
+    }
+
+    dibujarMapa();
+    comprobarCambioATurnoEnemigo();
+  }, 650);
+}
 
   function comprobarCambioATurnoEnemigo(){
     const controlables = (gameMode==="rescue") ? [...players, aldeano] : [...players];
