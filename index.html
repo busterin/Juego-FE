@@ -2,10 +2,10 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>TACTIC HEROES</title>
+  <title>TACTIC HEROES · RESCATE</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="style.css?v=skirmish-rescue-1">
+  <link rel="stylesheet" href="style.css?v=rescate-1">
 </head>
 <body>
   <!-- Bloqueo por orientación horizontal -->
@@ -21,13 +21,11 @@
     <button id="btnJugar" class="btn-jugar">JUGAR</button>
   </div>
 
-  <!-- Escena de diálogo (2 personajes + typewriter) -->
+  <!-- Escena de diálogo -->
   <div id="dialogScene" style="display:none">
     <div class="dialog-bg"></div>
-    <!-- Personajes -->
-    <img class="dialog-char left" id="charKnight" src="assets/player.png" alt="Caballero">
-    <img class="dialog-char right" id="charArcher" src="assets/archer.png" alt="Arquera">
-    <!-- Caja de diálogo -->
+    <img class="dialog-char left" id="charKnight" src="assets/player.PNG" alt="Caballero">
+    <img class="dialog-char right" id="charArcher" src="assets/archer.PNG" alt="Arquera">
     <div class="dialog-box">
       <div class="dialog-name" id="dialogName">Caballero</div>
       <div class="dialog-text" id="dialogText"></div>
@@ -37,15 +35,14 @@
     </div>
   </div>
 
-  <!-- Overlay NIVEL COMPLETADO -->
+  <!-- Overlay VICTORIA / DERROTA -->
   <div id="overlayWin" class="overlay" style="display:none">
     <div class="overlay-box">
-      <h1>NIVEL COMPLETADO</h1>
-      <button id="btnContinuar" class="primary">Continuar</button>
+      <h1>MISIÓN COMPLETADA</h1>
+      <p>¡El Aldeano llegó a la salida!</p>
+      <button id="btnContinuar" class="primary">Jugar de nuevo</button>
     </div>
   </div>
-
-  <!-- Overlay DERROTA (para el modo RESCATE) -->
   <div id="overlayLose" class="overlay" style="display:none">
     <div class="overlay-box">
       <h1>DERROTA</h1>
@@ -54,10 +51,10 @@
     </div>
   </div>
 
-  <!-- Banner de turno superpuesto -->
+  <!-- Banner turno -->
   <div id="turnBanner" class="turn-banner" style="display:none">TU TURNO</div>
 
-  <!-- Tablero (9x16) + HUD dentro -->
+  <!-- Tablero + HUD -->
   <div id="mapa" style="display:none">
     <div id="hud">
       <div id="ficha"></div>
@@ -65,6 +62,6 @@
     </div>
   </div>
 
-  <script src="script.js?v=skirmish-rescue-1"></script>
+  <script src="script.js?v=rescate-1"></script>
 </body>
 </html>
