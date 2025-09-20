@@ -1,1 +1,272 @@
-:root{ --cell: 40px; /* recalculada por JS para ocupar lo máximo en 9:16 */ --gap: 0px; /* Dimensiones del tablero 9:16 */ --cols: 9; --rows: 16; /* Filas no jugables (coincidir con JS) */ --npRows: 4; /* Altura del HUD en "filas" (≤ npRows) y desplazamiento hacia arriba */ --hudRows: 1.6; --hudOffset: 2.2; /* súbelo a 2.4 si lo quieres aún más arriba */ /* Fondo compartido */ --bg-url: url("assets/background.png"); } * { box-sizing: border-box; } html, body { height: 100%; } body { font-family: system-ui, Arial, sans-serif; margin: 0; height: 100dvh; min-height: -webkit-fill-available; color: #fff; overflow: hidden; display: flex; flex-direction: column; padding-bottom: env(safe-area-inset-bottom); /* 👇 Fondo de pantalla completa */ background-image: var(--bg-url); background-size: cover; background-position: center; background-repeat: no-repeat; background-color: #000; } /* ---------- Portada ---------- */ #portada { position: fixed; inset: 0; background: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10000; } #portada .portada-img { width: 100%; height: 100%; object-fit: cover; /* rellena pantalla, aunque recorte */ object-position: center; pointer-events: none; } #portada .btn-jugar { position: absolute; bottom: 12%; padding: 14px 26px; font-size: 20px; font-weight: bold; border-radius: 12px; border: 2px solid #145a32; background: linear-gradient(180deg, #27ae60, #1e8449); color: #fff; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.4); } #portada .btn-jugar:hover { background: linear-gradient(180deg, #2ecc71, #229954); } /* ---------- Escena de diálogo ---------- */ #dialogScene{ position: fixed; inset: 0; z-index: 12000; display: block; } #dialogScene .dialog-bg{ position: absolute; inset: 0; background-image: var(--bg-url); background-size: cover; background-position: center; filter: brightness(.95) saturate(1.05); } /* Personajes: colocados a izquierda y derecha, sin superponerse */ .dialog-char{ position: absolute; bottom: 18%; height: 58%; max-width: 44vw; /* evita solaparse en pantallas estrechas */ object-fit: contain; image-rendering: pixelated; opacity: 0.6; /* el hablante sube a 1 */ transition: opacity .2s ease; pointer-events: none; } /* Caballero: entra desde la izquierda */ .dialog-char.left { left: 2%; transform: translateX(-120%); animation: char-in-left .55s ease-out forwards; } /* Arquera: a la derecha, volteada para mirar al caballero */ .dialog-char.right { right: 2%; transform: translateX(120%) scaleX(-1); /* volteada */ transform-origin: center; animation: char-in-right .65s ease-out forwards; animation-delay: .1s; } /* Animaciones con la orientación correcta */ @keyframes char-in-left { 0% { transform: translateX(-120%); opacity: 0; } 70% { transform: translateX(4%); opacity: 1; } 100% { transform: translateX(0); opacity: 1; } } @keyframes char-in-right { 0% { transform: translateX(120%) scaleX(-1); opacity: 0; } 70% { transform: translateX(-4%) scaleX(-1); opacity: 1; } 100% { transform: translateX(0) scaleX(-1); opacity: 1; } } /* Personaje activo: ilumina + pequeño pop cíclico */ .dialog-char.speaking{ opacity: 1 !important; filter: drop-shadow(0 0 10px rgba(255,255,255,.12)); } /* Animación de “pop” mientras habla (no interfiere con la entrada) */ @keyframes speak-pop { 0% { transform: translateY(0) scale(1); } 30% { transform: translateY(-3px) scale(1.03); } 60% { transform: translateY(0) scale(1); } 100% { transform: translateY(0) scale(1); } } /* Clase que activa el pop en bucle. Nota: la arquera mantiene su flip de entrada; el pop se aplica tras la entrada. */ .dialog-char.pop { animation: speak-pop 1.2s ease-in-out .3s infinite; } /* Caja de diálogo */ .dialog-box{ position: absolute; left: 4%; right: 4%; bottom: 4%; background: rgba(7,12,16,.88); border: 1px solid rgba(255,255,255,.14); border-radius: 12px; padding: 10px 12px 12px 12px; box-shadow: 0 10px 24px rgba(0,0,0,.35); } .dialog-name{ font-weight: 800; margin-bottom: 6px; color: #fff; letter-spacing: .2px; } .dialog-text{ font-size: 14px; line-height: 1.35; color: #e6ecf4; min-height: 3.2em; margin-bottom: 10px; white-space: pre-wrap; } .dialog-cta{ display: flex; justify-content: flex-end; } .dialog-box .small{ padding: 7px 12px; font-size: 13px; border-radius: 10px; } /* Cursor de tecleo (parpadeo) */ .type-cursor::after{ content: "▌"; display: inline-block; margin-left: 2px; animation: cursorBlink .9s steps(1) infinite; } @keyframes cursorBlink { 50% { opacity: 0; } } /* ---------- Overlay victoria ---------- */ .overlay { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; /* capa de color semitransparente + blur */ background: rgba(0,0,0,.55); backdrop-filter: blur(4px); } /* Fondo propio del overlay para evitar bandas negras */ .overlay::before{ content: ""; position: absolute; inset: 0; z-index: -1; background-image: var(--bg-url); background-size: cover; /* rellena toda la pantalla */ background-position: center; background-repeat: no-repeat; transform: scale(1.02); /* ligero zoom para evitar bordes al hacer blur */ filter: brightness(0.9); /* sutil oscurecido bajo la capa negra */ } /* Caja de mensaje */ .overlay-box{ background: #101418; border: 1px solid rgba(255,255,255,.15); border-radius: 14px; padding: 22px 20px; width: min(90vw, 420px); text-align: center; box-shadow: 0 12px 28px rgba(0,0,0,.45); } .overlay-box h1{ margin: 0 0 14px 0; } /* ---------- Banner de turno ---------- */ .turn-banner{ position: fixed; left: 50%; top: max(10px, env(safe-area-inset-top)); transform: translateX(-50%); z-index: 8000; background: rgba(0,0,0,.6); border: 1px solid rgba(255,255,255,.25); color: #fff; padding: 8px 14px; border-radius: 12px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; backdrop-filter: blur(3px); box-shadow: 0 6px 20px rgba(0,0,0,.35); } /* ---------- Tablero 9x16 ---------- */ #mapa { flex: 1 1 auto; display: grid; grid-template-columns: repeat(var(--cols), var(--cell)); grid-template-rows: repeat(var(--rows), var(--cell)); gap: var(--gap); width: calc(var(--cols) * var(--cell)); height: calc(var(--rows) * var(--cell)); margin: auto; user-select: none; touch-action: manipulation; /* sin fondo propio para evitar “doble imagen” */ border: 2px solid rgba(255,255,255,.15); border-radius: 10px; box-shadow: 0 8px 20px rgba(0,0,0,.3); position: relative; } /* HUD dentro del mapa, más arriba en la zona no jugable */ #hud{ position: absolute; left: 0; right: 0; top: calc(var(--cell) * (var(--rows) - var(--hudRows) - var(--hudOffset))); height: calc(var(--cell) * var(--hudRows)); padding: 6px 8px; display: flex; flex-direction: column; gap: 6px; background: transparent; pointer-events: auto; } /* Celdas y selección */ .celda { width: var(--cell); height: var(--cell); display: grid; place-items: center; cursor: pointer; position: relative; z-index: 0; } .celda.movible { outline: 3px solid rgba(48,140,255,0.55); outline-offset: -1px; } .celda.seleccionada{ box-shadow: inset 0 0 0 3px #1b76ff; } /* Sprites */ .fichaMiniImg { width: 90%; height: 90%; object-fit: contain; image-rendering: pixelated; position: relative; z-index: 1; pointer-events: none; } /* Ficha + acciones en HUD */ #ficha { display: none; width: 100%; text-align: left; background: rgba(16,20,24,.88); color: #ddd; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 6px 8px; } .card { display: grid; grid-template-columns: 52px 1fr; gap: 8px; align-items: center; } .card .portrait { width: 52px; height: 52px; border-radius: 8px; background-size: cover; background-position: center; background-repeat: no-repeat; border: 1px solid rgba(255,255,255,.12); } .card .name { font-weight: 800; margin: 0 0 4px 0; color:#fff; } .meta { margin: 0 0 4px 0; font-size: 12px; color: #c8d0df; } .hp { display: flex; align-items: center; gap: 6px; } .hp .bar { position: relative; flex: 1; height: 10px; background: #243042; border: 1px solid rgba(255,255,255,.12); border-radius: 999px; overflow: hidden; } .hp .bar > span { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, #2ecc71, #27ae60); transition: width .25s ease; } .hp .value { font-size: 11px; min-width: 76px; text-align: right; color:#e6e9ef; } #acciones { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; } button { padding: 7px 10px; font-size: 13px; border-radius: 10px; border: 1px solid #c9d2e3; background: white; color: #111; cursor: pointer; } button.primary { background: #1b76ff; color: white; border-color: #1b76ff; } /* ---------- FX ---------- */ @keyframes flash-yellow { 0% { background-color: rgba(255,230,0,.75);} 100% {background-color: transparent;} } @keyframes flash-red { 0% { background-color: rgba(255,60,60,.75);} 100% {background-color: transparent;} } .celda.flash-player { animation: flash-yellow .28s ease-out; } .celda.flash-enemy { animation: flash-red .28s ease-out; } @keyframes blink-hit { 0%,100%{opacity:1;} 50%{opacity:.12;} } .fichaMiniImg.blink-hit { animation: blink-hit .6s linear 2; } @keyframes dmg-pop { 0%{ transform:translate(-50%,-10px) scale(1); opacity:1;} 100%{ transform:translate(-50%,-42px) scale(1.05); opacity:0; } } .dmg-float { position: absolute; left: 50%; top: 8px; transform: translateX(-50%); font-weight: 900; font-size: 15px; padding: 2px 6px; border-radius: 6px; color:#111; background:#fff; border:1px solid rgba(0,0,0,.1); box-shadow: 0 2px 6px rgba(0,0,0,.15); animation: dmg-pop .6s ease-out forwards; } .dmg-player { border-color: rgba(255,200,0,.6); } .dmg-enemy { border-color: rgba(255,80,80,.6); } @keyframes death-pop { 0%{opacity:1; transform: scale(1);} 100%{opacity:0; transform: scale(1.15);} } .death-pop { animation: death-pop .35s ease-out forwards; } /* --- Screen Shake --- */ @keyframes screen-shake { 0% { transform: translate(0, 0); } 20% { transform: translate(-6px, 4px); } 40% { transform: translate(6px, -3px); } 60% { transform: translate(-4px, 2px); } 80% { transform: translate(4px, -2px); } 100% { transform: translate(0, 0); } } .shake { animation: screen-shake 0.4s ease-in-out; } /* ---------- Bloqueo de orientación horizontal ---------- */ #orientationBlocker{ position: fixed; inset: 0; z-index: 20000; display: grid; place-items: center; background: rgba(0,0,0,.85); backdrop-filter: blur(2px); } #orientationBlocker .obx{ background: #101418; color: #fff; border: 1px solid rgba(255,255,255,.15); border-radius: 14px; padding: 18px 16px; width: min(86vw, 420px); text-align: center; font-weight: 700; box-shadow: 0 12px 28px rgba(0,0,0,.45); } /* Ultra-compacto para pantallas muy pequeñas */ @media (max-width: 380px){ .card { grid-template-columns: 46px 1fr; gap: 6px; } .card .portrait { width: 46px; height: 46px; } .meta { font-size: 11px; } .hp .value { font-size: 10px; min-width: 64px; } button { padding: 6px 9px; font-size: 12px; } }
+:root{
+  --cell: 40px; /* recalculada por JS para ocupar lo máximo en 9:16 */
+  --gap: 0px;
+
+  /* Dimensiones del tablero 9:16 */
+  --cols: 9;
+  --rows: 16;
+
+  /* Filas no jugables (coincidir con JS) */
+  --npRows: 4;
+
+  /* Altura del HUD en "filas" (≤ npRows) y desplazamiento hacia arriba */
+  --hudRows: 1.6;
+  --hudOffset: 2.2; /* súbelo a 2.4 si lo quieres aún más arriba */
+
+  /* Fondo compartido */
+  --bg-url: url("assets/background.png");
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+
+body {
+  font-family: system-ui, Arial, sans-serif;
+  margin: 0;
+  height: 100dvh;
+  min-height: -webkit-fill-available;
+  color: #fff;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom);
+
+  /* 👇 Fondo de pantalla completa */
+  background-image: var(--bg-url);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: #000;
+}
+
+/* ---------- Portada ---------- */
+#portada {
+  position: fixed; inset: 0; background: #000;
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  z-index: 10000;
+}
+#portada .portada-img {
+  width: 100%; height: 100%;
+  object-fit: cover; /* rellena pantalla, aunque recorte */
+  object-position: center;
+  pointer-events: none;
+}
+#portada .btn-jugar {
+  position: absolute; bottom: 12%;
+  padding: 14px 26px; font-size: 20px; font-weight: bold;
+  border-radius: 12px; border: 2px solid #145a32;
+  background: linear-gradient(180deg, #27ae60, #1e8449);
+  color: #fff; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,.4);
+}
+#portada .btn-jugar:hover { background: linear-gradient(180deg, #2ecc71, #229954); }
+
+/* ---------- Escena de diálogo ---------- */
+#dialogScene{ position: fixed; inset: 0; z-index: 12000; display: block; }
+#dialogScene .dialog-bg{
+  position: absolute; inset: 0;
+  background-image: var(--bg-url);
+  background-size: cover; background-position: center;
+  filter: brightness(.95) saturate(1.05);
+}
+/* Personajes: colocados a izquierda y derecha, sin superponerse */
+.dialog-char{
+  position: absolute; bottom: 18%;
+  height: 58%; max-width: 44vw; /* evita solaparse en pantallas estrechas */
+  object-fit: contain; image-rendering: pixelated;
+  opacity: 0.6; /* el hablante sube a 1 */
+  transition: opacity .2s ease;
+  pointer-events: none;
+}
+/* Caballero: entra desde la izquierda */
+.dialog-char.left { left: 2%; transform: translateX(-120%); animation: char-in-left .55s ease-out forwards; }
+/* Arquera: a la derecha, volteada para mirar al caballero */
+.dialog-char.right { right: 2%; transform: translateX(120%) scaleX(-1); transform-origin: center; animation: char-in-right .65s ease-out forwards; animation-delay: .1s; }
+
+/* Animaciones con la orientación correcta */
+@keyframes char-in-left {
+  0% { transform: translateX(-120%); opacity: 0; }
+  70%{ transform: translateX(4%); opacity: 1; }
+  100%{ transform: translateX(0); opacity: 1; }
+}
+@keyframes char-in-right {
+  0% { transform: translateX(120%) scaleX(-1); opacity: 0; }
+  70%{ transform: translateX(-4%) scaleX(-1); opacity: 1; }
+  100%{ transform: translateX(0) scaleX(-1); opacity: 1; }
+}
+
+/* Personaje activo: ilumina + pequeño pop cíclico */
+.dialog-char.speaking{ opacity: 1 !important; filter: drop-shadow(0 0 10px rgba(255,255,255,.12)); }
+
+/* Pop mientras habla */
+@keyframes speak-pop {
+  0% { transform: translateY(0) scale(1); }
+  30%{ transform: translateY(-3px) scale(1.03); }
+  60%{ transform: translateY(0) scale(1); }
+  100%{ transform: translateY(0) scale(1); }
+}
+.dialog-char.pop { animation: speak-pop 1.2s ease-in-out .3s infinite; }
+
+/* Caja de diálogo */
+.dialog-box{
+  position: absolute; left: 4%; right: 4%; bottom: 4%;
+  background: rgba(7,12,16,.88); border: 1px solid rgba(255,255,255,.14);
+  border-radius: 12px; padding: 10px 12px 12px 12px;
+  box-shadow: 0 10px 24px rgba(0,0,0,.35);
+}
+.dialog-name{ font-weight: 800; margin-bottom: 6px; color: #fff; letter-spacing: .2px; }
+.dialog-text{ font-size: 14px; line-height: 1.35; color: #e6ecf4; min-height: 3.2em; margin-bottom: 10px; white-space: pre-wrap; }
+.dialog-cta{ display: flex; justify-content: flex-end; }
+.dialog-box .small{ padding: 7px 12px; font-size: 13px; border-radius: 10px; }
+
+/* Cursor de tecleo */
+.type-cursor::after{
+  content: "▌"; display: inline-block; margin-left: 2px; animation: cursorBlink .9s steps(1) infinite;
+}
+@keyframes cursorBlink { 50% { opacity: 0; } }
+
+/* ---------- Overlays ---------- */
+.overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  display: grid; place-items: center;
+  background: rgba(0,0,0,.55); backdrop-filter: blur(4px);
+}
+.overlay::before{
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background-image: var(--bg-url);
+  background-size: cover; background-position: center; background-repeat: no-repeat;
+  transform: scale(1.02); filter: brightness(0.9);
+}
+.overlay-box{
+  background: #101418; border: 1px solid rgba(255,255,255,.15);
+  border-radius: 14px; padding: 22px 20px; width: min(90vw, 420px);
+  text-align: center; box-shadow: 0 12px 28px rgba(0,0,0,.45);
+}
+.overlay-box h1{ margin: 0 0 14px 0; }
+
+/* ---------- Banner de turno ---------- */
+.turn-banner{
+  position: fixed; left: 50%; top: max(10px, env(safe-area-inset-top));
+  transform: translateX(-50%); z-index: 8000;
+  background: rgba(0,0,0,.6); border: 1px solid rgba(255,255,255,.25); color: #fff;
+  padding: 8px 14px; border-radius: 12px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase;
+  backdrop-filter: blur(3px); box-shadow: 0 6px 20px rgba(0,0,0,.35);
+}
+
+/* ---------- Tablero 9x16 ---------- */
+#mapa {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: repeat(var(--cols), var(--cell));
+  grid-template-rows: repeat(var(--rows), var(--cell));
+  gap: var(--gap);
+  width: calc(var(--cols) * var(--cell));
+  height: calc(var(--rows) * var(--cell));
+  margin: auto;
+  user-select: none; touch-action: manipulation;
+  border: 2px solid rgba(255,255,255,.15); border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0,0,0,.3);
+  position: relative;
+}
+
+/* HUD dentro del mapa, más arriba en la zona no jugable */
+#hud{
+  position: absolute; left: 0; right: 0;
+  top: calc(var(--cell) * (var(--rows) - var(--hudRows) - var(--hudOffset)));
+  height: calc(var(--cell) * var(--hudRows));
+  padding: 6px 8px; display: flex; flex-direction: column; gap: 6px;
+  background: transparent; pointer-events: auto;
+}
+
+/* Celdas y selección */
+.celda { width: var(--cell); height: var(--cell); display: grid; place-items: center; cursor: pointer; position: relative; z-index: 0; }
+.celda.movible { outline: 3px solid rgba(48,140,255,0.55); outline-offset: -1px; }
+.celda.seleccionada{ box-shadow: inset 0 0 0 3px #1b76ff; }
+
+/* Sprites */
+.fichaMiniImg { width: 90%; height: 90%; object-fit: contain; image-rendering: pixelated; position: relative; z-index: 1; pointer-events: none; }
+
+/* Ficha + acciones en HUD */
+#ficha { display: none; width: 100%; text-align: left; background: rgba(16,20,24,.88); color: #ddd; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 6px 8px; }
+.card { display: grid; grid-template-columns: 52px 1fr; gap: 8px; align-items: center; }
+.card .portrait { width: 52px; height: 52px; border-radius: 8px; background-size: cover; background-position: center; background-repeat: no-repeat; border: 1px solid rgba(255,255,255,.12); }
+.card .name { font-weight: 800; margin: 0 0 4px 0; color:#fff; }
+.meta { margin: 0 0 4px 0; font-size: 12px; color: #c8d0df; }
+.hp { display: flex; align-items: center; gap: 6px; }
+.hp .bar { position: relative; flex: 1; height: 10px; background: #243042; border: 1px solid rgba(255,255,255,.12); border-radius: 999px; overflow: hidden; }
+.hp .bar > span { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, #2ecc71, #27ae60); transition: width .25s ease; }
+.hp .value { font-size: 11px; min-width: 76px; text-align: right; color:#e6e9ef; }
+#acciones { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+
+button { padding: 7px 10px; font-size: 13px; border-radius: 10px; border: 1px solid #c9d2e3; background: white; color: #111; cursor: pointer; }
+button.primary { background: #1b76ff; color: white; border-color: #1b76ff; }
+
+/* ---------- FX ---------- */
+@keyframes flash-yellow { 0% { background-color: rgba(255,230,0,.75);} 100% {background-color: transparent;} }
+@keyframes flash-red    { 0% { background-color: rgba(255,60,60,.75);}  100% {background-color: transparent;} }
+.celda.flash-player { animation: flash-yellow .28s ease-out; }
+.celda.flash-enemy  { animation: flash-red .28s ease-out; }
+
+@keyframes blink-hit { 0%,100%{opacity:1;} 50%{opacity:.12;} }
+.fichaMiniImg.blink-hit { animation: blink-hit .6s linear 2; }
+
+@keyframes dmg-pop { 0%{ transform:translate(-50%,-10px) scale(1); opacity:1;} 100%{ transform:translate(-50%,-42px) scale(1.05); opacity:0; } }
+.dmg-float {
+  position: absolute; left: 50%; top: 8px; transform: translateX(-50%);
+  font-weight: 900; font-size: 15px; padding: 2px 6px; border-radius: 6px; color:#111; background:#fff;
+  border:1px solid rgba(0,0,0,.1); box-shadow: 0 2px 6px rgba(0,0,0,.15);
+  animation: dmg-pop .6s ease-out forwards;
+}
+.dmg-player { border-color: rgba(255,200,0,.6); }
+.dmg-enemy  { border-color: rgba(255,80,80,.6); }
+
+@keyframes death-pop { 0%{opacity:1; transform: scale(1);} 100%{opacity:0; transform: scale(1.15);} }
+.death-pop { animation: death-pop .35s ease-out forwards; }
+
+/* --- Screen Shake --- */
+@keyframes screen-shake {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-6px, 4px); }
+  40% { transform: translate(6px, -3px); }
+  60% { transform: translate(-4px, 2px); }
+  80% { transform: translate(4px, -2px); }
+  100% { transform: translate(0, 0); }
+}
+.shake { animation: screen-shake 0.4s ease-in-out; }
+
+/* ---------- Bloqueo de orientación horizontal ---------- */
+#orientationBlocker{
+  position: fixed; inset: 0; z-index: 20000;
+  display: grid; place-items: center; background: rgba(0,0,0,.85); backdrop-filter: blur(2px);
+}
+#orientationBlocker .obx{
+  background: #101418; color: #fff; border: 1px solid rgba(255,255,255,.15);
+  border-radius: 14px; padding: 18px 16px; width: min(86vw, 420px);
+  text-align: center; font-weight: 700; box-shadow: 0 12px 28px rgba(0,0,0,.45);
+}
+
+/* Ultra-compacto para pantallas muy pequeñas */
+@media (max-width: 380px){
+  .card { grid-template-columns: 46px 1fr; gap: 6px; }
+  .card .portrait { width: 46px; height: 46px; }
+  .meta { font-size: 11px; }
+  .hp .value { font-size: 10px; min-width: 64px; }
+  button { padding: 6px 9px; font-size: 12px; }
+}
+
+/* ========================= */
+/* === Extras RESCATE ====== */
+/* ========================= */
+.salida{
+  width: 70%;
+  height: 70%;
+  border: 2px dashed rgba(255,255,255,.8);
+  border-radius: 8px;
+  background: rgba(255,255,255,.08);
+  box-shadow: inset 0 0 12px rgba(255,255,255,.18);
+}
+.fichaMiniImg.villager{
+  outline: 2px solid #f1c40f;
+  outline-offset: -2px;
+  border-radius: 6px;
+}
