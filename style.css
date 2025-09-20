@@ -14,7 +14,7 @@
   --hudOffset: 2.2; /* súbelo a 2.4 si lo quieres aún más arriba */
 
   /* Fondo compartido */
-  --bg-url: url("assets/background.PNG");
+  --bg-url: url("assets/background.png");
 }
 
 * { box-sizing: border-box; }
